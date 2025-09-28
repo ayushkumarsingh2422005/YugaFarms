@@ -301,7 +301,7 @@ export default function Home() {
                 <div className="space-y-4">
                   {/* Quote */}
                   <p className="text-[#2D2D2D] text-lg leading-relaxed">
-                    "The quality of Anura's A2 ghee is absolutely exceptional! Every time I cook with it, the aroma fills my entire kitchen just like my grandmother's recipes. The rotis puff up perfectly and the taste is divine."
+                  &quot;The quality of Anura&apos;s A2 ghee is absolutely exceptional! Every time I cook with it, the aroma fills my entire kitchen just like my grandmother&apos;s recipes. The rotis puff up perfectly and the taste is divine.&quot;
                   </p>
 
                   {/* Reviewer Info */}
@@ -342,7 +342,7 @@ export default function Home() {
                 <div className="bg-white rounded-2xl shadow-lg p-8 ml-4">
                   <div className="space-y-4">
                     <p className="text-[#2D2D2D] text-lg leading-relaxed">
-                      "After trying countless oils, I finally found one that doesn't feel heavy on the stomach. My pakoras are crisp and light, just like my mother used to make. The difference in quality is remarkable."
+                    &quot;After trying countless oils, I finally found one that doesn&apos;t feel heavy on the stomach. My pakoras are crisp and light, just like my mother used to make. The difference in quality is remarkable.&quot;
                     </p>
                     <div className="space-y-1">
                       <div className="font-bold text-[#2D2D2D] text-lg">Karthik Reddy</div>

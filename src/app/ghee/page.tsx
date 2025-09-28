@@ -1,7 +1,5 @@
 'use client'
 import React from "react";
-import Image from "next/image";
-import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 

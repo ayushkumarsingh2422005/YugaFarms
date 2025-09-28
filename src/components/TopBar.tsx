@@ -4,9 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import React from 'react'
 
-type Props = {}
-
-export default function TopBar({ }: Props) {
+export default function TopBar() {
     const pathname = usePathname()
     const isHome = pathname === '/' || pathname === ''
     

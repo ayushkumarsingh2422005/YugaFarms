@@ -1,7 +1,5 @@
 'use client'
 import React from "react";
-import Image from "next/image";
-import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 
@@ -21,7 +19,7 @@ export default function HoneyPage() {
                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-[#f5d26a] to-[#4b2e19] rounded-full"></div>
                </div>
                <p className="text-xl text-[#2D2D2D]/70 mt-6 max-w-3xl mx-auto">
-                 Raw, unfiltered honey straight from nature's bounty. Experience the pure sweetness and health benefits of authentic honey.
+                 Raw, unfiltered honey straight from nature&apos;s bounty. Experience the pure sweetness and health benefits of authentic honey.
                </p>
              </div>
            </div>
@@ -264,7 +262,7 @@ export default function HoneyPage() {
             <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-[Pacifico] text-[#4b2e19] mb-4">Why Choose Our Honey?</h2>
               <p className="text-lg text-[#2D2D2D]/70 max-w-2xl mx-auto">
-                Every jar of our honey is a testament to nature's perfection and our commitment to purity.
+                Every jar of our honey is a testament to nature&apos;s perfection and our commitment to purity.
               </p>
             </div>
 

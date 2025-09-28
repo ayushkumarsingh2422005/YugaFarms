@@ -1,7 +1,5 @@
 'use client'
 import React from "react";
-import Image from "next/image";
-import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 
@@ -49,7 +47,7 @@ export default function AboutPage() {
                {/* Video Caption */}
                <div className="text-center mt-6">
                  <p className="text-[#2D2D2D]/60 italic text-lg">
-                   "Watch our journey from farm to your table, preserving traditions that have nourished families for centuries."
+                 &quot;Watch our journey from farm to your table, preserving traditions that have nourished families for centuries.&quot;
                  </p>
                </div>
              </div>
@@ -233,7 +231,7 @@ export default function AboutPage() {
               <h2 className="text-4xl md:text-6xl font-[Pacifico] text-[#4b2e19] mb-6">The Art of Creation</h2>
               <p className="text-xl text-[#2D2D2D]/70 max-w-4xl mx-auto leading-relaxed">
                 Every product we create follows a sacred ritual that has been passed down through generations. 
-                This is not just a process - it's a meditation, a prayer, a celebration of nature's gifts.
+                This is not just a process - it&apos;s a meditation, a prayer, a celebration of nature&apos;s gifts.
               </p>
             </div>
 

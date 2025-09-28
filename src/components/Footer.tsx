@@ -2,9 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
 
-type Props = {}
-
-export default function Footer({ }: Props) {
+export default function Footer() {
     return (
         <footer className="bg-[#fdf7f2] pt-12 pb-8">
             <div className="container mx-auto px-4">
