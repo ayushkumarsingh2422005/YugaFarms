@@ -1,6 +1,5 @@
 
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
@@ -10,21 +9,29 @@ export default function Home() {
     <>
       <TopBar />
       <main
-        className="min-h-screen bg-[
-#fdf7f2] relative overflow-hidden pt-20 bg-[url('/bg.png')] bg-no-repeat bg-[length:150%] md:bg-[length:60%] bg-[position:60%_center]"
+        className="min-h-[90vh] max-h-screen relative overflow-hidden pt-20"
       >
+        {/* Background Video */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          src="/bg.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        {/* Overlay for slight dimming if needed */}
+        <div className="absolute inset-0 bg-[#fdf7f2]/60 z-10 -mt-20"></div>
+
         {/* Brand Name on top left */}
-        <div className="space-x-2 z-40 w-1/3 mt-[7%] ml-[12%]">
-          <div className="text-[
-#2D2D2D] tracking-wide text-[80px] font-[Pacifico]">YugaFarms</div>
-          <div className="text-[
-#2D2D2D] text-xl font-semibold mt-2 pl-2">Pure Goodness, Straight from <br /> Our Farm to Your Table</div>
+        <div className="space-x-2 z-40 w-1/3 mt-[7%] ml-[12%] relative">
+          <div className="text-[#2D2D2D] tracking-wide text-[80px] font-[Pacifico]">YugaFarms</div>
+          <div className="text-[#2D2D2D] text-xl font-semibold mt-2 pl-2">Pure Goodness, Straight from <br /> Our Farm to Your Table</div>
         </div>
 
-        <div className="absolute bottom-10 bg-black text-white px-4 py-2 rounded-full left-[50%] transform translate-x-[-50%]">
+        <div className="absolute bottom-10 bg-black text-white px-4 py-2 rounded-full left-[50%] transform translate-x-[-50%] z-40">
           SHOP NOW
         </div>
-
       </main>
 
       {/* Wave into Our Top Picks */}

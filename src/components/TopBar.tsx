@@ -3,10 +3,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import React from 'react'
+import { useAuth } from '../app/context/AuthContext'
 
 export default function TopBar() {
     const pathname = usePathname()
     const isHome = pathname === '/' || pathname === ''
+    const { user, logout } = useAuth()
     
     return (
         <>
@@ -92,6 +94,13 @@ export default function TopBar() {
                                 </span>
                             </button>
 
+                            {/* Auth */}
+                            {user ? (
+                                <ProfileMenu username={user.username} email={user.email} onLogout={logout} />
+                            ) : (
+                                <Link href="/login" className="text-sm bg-[#4b2e19] text-[#f5d26a] px-3 py-1 rounded-lg hover:opacity-90">Login</Link>
+                            )}
+
                             {/* Mobile Menu Button */}
                             <button className="md:hidden text-[#2D2D2D] hover:text-[#4b2e19] transition-colors duration-300 p-2 rounded-full hover:bg-[#f5d26a]/10">
                                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,5 +112,50 @@ export default function TopBar() {
                 </div >
             </header >
         </>
+    )
+}
+
+function ProfileMenu({ username, email, onLogout }: { username: string; email: string; onLogout: () => void }) {
+    const [open, setOpen] = React.useState(false)
+    const initials = React.useMemo(() => {
+        const name = username || email || "";
+        const parts = name.trim().split(/\s+/)
+        const letters = parts.length >= 2 ? parts[0][0] + parts[1][0] : name.slice(0, 2)
+        return letters.toUpperCase()
+    }, [username, email])
+
+    React.useEffect(() => {
+        const onDoc = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (!target.closest?.('#ygf-profile-menu')) setOpen(false)
+        }
+        document.addEventListener('click', onDoc)
+        return () => document.removeEventListener('click', onDoc)
+    }, [])
+
+    return (
+        <div id="ygf-profile-menu" className="relative">
+            <button
+                onClick={() => setOpen(v => !v)}
+                className="h-9 w-9 rounded-full bg-[#4b2e19] text-[#f5d26a] font-semibold flex items-center justify-center hover:opacity-90"
+                aria-haspopup="menu"
+                aria-expanded={open}
+            >
+                {initials}
+            </button>
+            {open && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-[#2D2D2D]/10 rounded-lg shadow-lg overflow-hidden z-[70]">
+                    <div className="px-3 py-2 border-b border-[#2D2D2D]/10">
+                        <div className="text-sm font-semibold text-[#4b2e19] truncate">{username}</div>
+                        <div className="text-xs text-[#2D2D2D]/70 truncate">{email}</div>
+                    </div>
+                    <div className="py-1">
+                        <Link href="/profile" className="block px-3 py-2 text-sm text-[#2D2D2D] hover:bg-[#fdf7f2]">Manage profile</Link>
+                        <Link href="/orders" className="block px-3 py-2 text-sm text-[#2D2D2D] hover:bg-[#fdf7f2]">My Orders</Link>
+                        <button onClick={onLogout} className="w-full text-left px-3 py-2 text-sm text-[#7a1a1a] hover:bg-[#fdf7f2]">Logout</button>
+                    </div>
+                </div>
+            )}
+        </div>
     )
 }
