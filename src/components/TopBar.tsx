@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import React from 'react'
 import { useAuth } from '../app/context/AuthContext'
+import { useCart } from '../app/context/CartContext'
 
 export default function TopBar() {
     const pathname = usePathname()
     const isHome = pathname === '/' || pathname === ''
     const { user, logout } = useAuth()
+    const { totalItems } = useCart()
     
     return (
         <>
@@ -84,15 +86,17 @@ export default function TopBar() {
                         {/* Right Side Icons */}
                         <div className="flex items-center space-x-4">
                             {/* Cart Icon */}
-                            <button className="relative text-[#2D2D2D] hover:text-[#4b2e19] transition-all duration-300 group p-2 rounded-full hover:bg-[#f5d26a]/10">
+                            <Link href="/cart" className="relative text-[#2D2D2D] hover:text-[#4b2e19] transition-all duration-300 group p-2 rounded-full hover:bg-[#f5d26a]/10">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                                 {/* Cart Badge */}
-                                <span className="absolute -top-1 -right-1 bg-[#f5d26a] text-[#4b2e19] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                                    3
-                                </span>
-                            </button>
+                                {totalItems > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-[#f5d26a] text-[#4b2e19] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                        {totalItems > 99 ? '99+' : totalItems}
+                                    </span>
+                                )}
+                            </Link>
 
                             {/* Auth */}
                             {user ? (

@@ -21,7 +21,7 @@ export default function Home() {
           playsInline
         />
         {/* Overlay for slight dimming if needed */}
-        <div className="absolute inset-0 bg-[#fdf7f2]/60 z-10 -mt-20"></div>
+        <div className="absolute inset-0 bg-[#fdf7f2]/20 z-10 -mt-20"></div>
 
         {/* Brand Name on top left */}
         <div className="space-x-2 z-40 w-1/3 mt-[7%] ml-[12%] relative">

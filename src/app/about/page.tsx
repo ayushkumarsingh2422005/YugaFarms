@@ -74,7 +74,7 @@ export default function AboutPage() {
 
             <div className="max-w-6xl mx-auto">
               {/* Main Story Section */}
-              <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 md:p-12 mb-16 shadow-xl border border-[#4b2e19]/10">
+              <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 md:p-12 mb-16 border border-[#4b2e19]/10">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                   {/* Left Side - Story */}
                   <div className="space-y-6">

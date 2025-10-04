@@ -4,6 +4,7 @@ import "./globals.css";
 import TopBar from "../components/TopBar";
 import Footer from "../components/Footer";
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,13 +28,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          async
+        ></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <TopBar />
-          <main className="pt-24">{children}</main>
-          <Footer />
+          <CartProvider>
+            {/* <TopBar /> */}
+            <main className="pt-24">{children}</main>
+            {/* <Footer /> */}
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

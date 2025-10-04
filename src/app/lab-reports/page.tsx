@@ -36,118 +36,71 @@ export default function LabReportsPage() {
         {/* Lab Reports Section */}
         <section className="py-16 md:py-20 bg-[#eef2e9]">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
+            {/* <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-[Pacifico] text-[#4b2e19] mb-4">Quality Assurance</h2>
               <p className="text-lg text-[#2D2D2D]/70 max-w-3xl mx-auto">
                 Our commitment to quality is backed by comprehensive laboratory testing from certified facilities.
               </p>
-            </div>
+            </div> */}
 
             {/* Lab Reports Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
               {[
                 {
-                  product: "A2 Desi Ghee",
-                  batch: "AG-2024-001",
-                  date: "March 15, 2024",
-                  status: "Passed",
-                  tests: ["Purity Test", "Adulteration Check", "Nutritional Analysis", "Heavy Metals"],
-                  emoji: "🧈",
-                  gradient: "from-[#f5d26a] to-[#e6b800]"
+                  name: "Better Bars",
+                  image: "/images/better-bars.png", // Place your image in public/images or update the path accordingly
+                  pdf: "/lab-reports/better-bars.pdf", // Place your PDF in public/lab-reports or update the path accordingly
                 },
                 {
-                  product: "Classic Cow Ghee",
-                  batch: "CG-2024-002",
-                  date: "March 12, 2024",
-                  status: "Passed",
-                  tests: ["Purity Test", "Adulteration Check", "Nutritional Analysis", "Microbiological"],
-                  emoji: "🐄",
-                  gradient: "from-[#2f4f2f] to-[#4b2e19]"
+                  name: "Better Bars",
+                  image: "/images/better-bars.png", // Place your image in public/images or update the path accordingly
+                  pdf: "/lab-reports/better-bars.pdf", // Place your PDF in public/lab-reports or update the path accordingly
                 },
                 {
-                  product: "Wild Forest Honey",
-                  batch: "WH-2024-003",
-                  date: "March 10, 2024",
-                  status: "Passed",
-                  tests: ["Purity Test", "Adulteration Check", "Moisture Content", "Enzyme Activity"],
-                  emoji: "🍯",
-                  gradient: "from-[#8B4513] to-[#D2691E]"
+                  name: "Better Bars",
+                  image: "/images/better-bars.png", // Place your image in public/images or update the path accordingly
+                  pdf: "/lab-reports/better-bars.pdf", // Place your PDF in public/lab-reports or update the path accordingly
                 },
                 {
-                  product: "Acacia Honey",
-                  batch: "AH-2024-004",
-                  date: "March 8, 2024",
-                  status: "Passed",
-                  tests: ["Purity Test", "Adulteration Check", "Moisture Content", "Pollen Analysis"],
-                  emoji: "🌼",
-                  gradient: "from-[#2f4f2f] to-[#4b2e19]"
+                  name: "Better Bars",
+                  image: "/images/better-bars.png", // Place your image in public/images or update the path accordingly
+                  pdf: "/lab-reports/better-bars.pdf", // Place your PDF in public/lab-reports or update the path accordingly
                 },
                 {
-                  product: "Buffalo Ghee",
-                  batch: "BG-2024-005",
-                  date: "March 5, 2024",
-                  status: "Passed",
-                  tests: ["Purity Test", "Adulteration Check", "Nutritional Analysis", "Heavy Metals"],
-                  emoji: "🥛",
-                  gradient: "from-[#8B4513] to-[#D2691E]"
+                  name: "Better Bars",
+                  image: "/images/better-bars.png", // Place your image in public/images or update the path accordingly
+                  pdf: "/lab-reports/better-bars.pdf", // Place your PDF in public/lab-reports or update the path accordingly
                 },
-                {
-                  product: "Organic Ghee",
-                  batch: "OG-2024-006",
-                  date: "March 3, 2024",
-                  status: "Passed",
-                  tests: ["Organic Certification", "Purity Test", "Pesticide Residue", "Nutritional Analysis"],
-                  emoji: "🌿",
-                  gradient: "from-[#2f4f2f] to-[#4b2e19]"
-                }
-              ].map((report, idx) => (
-                <div key={idx} className="bg-white rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-[#4b2e19]/10">
-                  {/* Header */}
-                  <div className={`bg-gradient-to-br ${report.gradient} p-6 text-white relative`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-4xl">{report.emoji}</div>
-                      <div className="text-right">
-                        <div className="text-sm opacity-90">Batch</div>
-                        <div className="font-bold">{report.batch}</div>
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">{report.product}</h3>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm opacity-90">Test Date</div>
-                      <div className="text-sm font-medium">{report.date}</div>
-                    </div>
+                // Add more products here as needed
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl border border-none flex flex-col items-center p-0 pb-6"
+                >
+                  <div className="w-full flex-1 flex items-center justify-center p-4">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="rounded-xl object-contain w-full h-64"
+                      style={{
+                        background: "#fff",
+                        borderRadius: "1.25rem",
+                        boxShadow: "0 1px 4px 0 rgba(0,0,0,0.03)",
+                        marginTop: "8px",
+                        marginBottom: "8px",
+                      }}
+                    />
                   </div>
-
-                  {/* Content */}
-                  <div className="p-6">
-                    {/* Status */}
-                    <div className="flex items-center justify-between mb-6">
-                      <span className="text-sm font-medium text-[#2D2D2D]/70">Test Status</span>
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        {report.status}
-                      </span>
-                    </div>
-
-                    {/* Tests Conducted */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-[#4b2e19] mb-3">Tests Conducted</h4>
-                      <div className="space-y-2">
-                        {report.tests.map((test, testIdx) => (
-                          <div key={testIdx} className="flex items-center gap-3">
-                            <div className="w-2 h-2 bg-[#f5d26a] rounded-full"></div>
-                            <span className="text-sm text-[#2D2D2D]/80">{test}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* View Report Button */}
-                    <button className="w-full mt-6 bg-[#4b2e19] text-white py-3 rounded-xl font-semibold hover:bg-[#2f4f2f] transition-colors duration-300 flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      View Full Report
+                  <div className="w-full text-center mt-2">
+                    <div className="text-lg font-medium text-[#222] mb-1">{item.name}</div>
+                    <button
+                      onClick={() => window.open(item.pdf, "_blank")}
+                      className="mt-2 text-[#222] font-semibold tracking-wide underline underline-offset-4 decoration-[#222] hover:text-[#4b2e19] transition-colors text-base"
+                      style={{
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      CHECK LAB TEST REPORT
                     </button>
                   </div>
                 </div>
@@ -155,7 +108,7 @@ export default function LabReportsPage() {
             </div>
 
             {/* Lab Information */}
-            <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 md:p-12 shadow-xl border border-[#4b2e19]/10">
+            <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-[#4b2e19]/10">
               <div className="text-center mb-8">
                 <h3 className="text-3xl font-bold text-[#4b2e19] mb-4">Certified Testing Laboratories</h3>
                 <p className="text-[#2D2D2D]/70 max-w-3xl mx-auto">
@@ -250,7 +203,7 @@ export default function LabReportsPage() {
                 Get access to all our lab test reports in one convenient package.
               </p>
               
-              <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-[#4b2e19]/10">
+              <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 border border-[#4b2e19]/10">
                 <div className="flex items-center justify-center gap-4 mb-6">
                   <div className="w-16 h-16 bg-gradient-to-br from-[#f5d26a] to-[#e6b800] rounded-full flex items-center justify-center text-2xl">
                     📄
