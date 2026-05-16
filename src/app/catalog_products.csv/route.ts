@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { productDetailPath } from "@/lib/productSlug";
 
 export const revalidate = 300;
 
@@ -125,7 +126,7 @@ export async function GET() {
 
       const firstImage = product.Image?.[0];
       const imageLink = absoluteMediaUrl(backendUrl, firstImage?.url);
-      const productLink = `${storefrontUrl}/product/${product.id}`;
+      const productLink = `${storefrontUrl}${productDetailPath(product)}`;
       const desc = product.Description || "";
       const itemGroupId = String(product.id);
       const tag0 = product.Tags?.[0]?.Value ?? "";

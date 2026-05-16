@@ -1,3 +1,5 @@
+import { getProductSlug, slugifyProductTitle } from "@/lib/productSlug";
+
 const DEFAULT_BACKEND = "http://localhost:1337";
 
 /** Public Strapi host used for media in next.config — safe SSR fallback when env vars are missing on Vercel. */
@@ -53,6 +55,7 @@ export type ProductImage = {
 
 export type Product = {
   id: number;
+  slug?: string | null;
   Title: string;
   Description: string;
   Rating: number;
@@ -144,6 +147,35 @@ export async function getProductsByType(type: "Ghee" | "Honey"): Promise<Product
   return data?.data ?? [];
 }
 
+/** All live products of a type (includes Top Picks), sorted by popularity. */
+export async function getAllProductsByType(type: "Ghee" | "Honey"): Promise<Product[]> {
+  const backend = getBackendUrl();
+  const data = await fetchStrapiJson<{ data?: Product[] }>(
+    `${backend}/api/products?filters[Type][$eq]=${type}&populate=*&sort=NumberOfPurchase:desc`
+  );
+  return data?.data ?? [];
+}
+
+/** Same category first, then the other (e.g. on a Ghee PDP: other Ghee, then Honey). */
+export async function getSimilarProducts(
+  current: Product,
+  limit = 8
+): Promise<Product[]> {
+  const primaryType = current.Type;
+  const secondaryType = primaryType === "Ghee" ? "Honey" : "Ghee";
+
+  const [primary, secondary] = await Promise.all([
+    getAllProductsByType(primaryType),
+    getAllProductsByType(secondaryType),
+  ]);
+
+  const excludeCurrent = (p: Product) => p.id !== current.id;
+  return [...primary.filter(excludeCurrent), ...secondary.filter(excludeCurrent)].slice(
+    0,
+    limit
+  );
+}
+
 export async function getProductById(id: string): Promise<Product | null> {
   const backend = getBackendUrl();
   let data = await fetchStrapiJson<{ data?: Product }>(
@@ -158,6 +190,36 @@ export async function getProductById(id: string): Promise<Product | null> {
 
   const list = await fetchStrapiJson<{ data?: Product[] }>(`${backend}/api/products?populate=*`);
   return list?.data?.find((p) => p.id.toString() === id) ?? null;
+}
+
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const backend = getBackendUrl();
+  const encoded = encodeURIComponent(slug);
+
+  const bySlugFilter = async (withLive: boolean) => {
+    const qs = withLive ? "&publicationState=live" : "";
+    return fetchStrapiJson<{ data?: Product[] }>(
+      `${backend}/api/products?filters[slug][$eq]=${encoded}&populate=*${qs}`
+    );
+  };
+
+  let rows = (await bySlugFilter(true))?.data;
+  if (!rows?.length) rows = (await bySlugFilter(false))?.data;
+  if (rows?.[0]) return rows[0];
+
+  if (/^\d+$/.test(slug)) {
+    return getProductById(slug);
+  }
+
+  const list = await fetchStrapiJson<{ data?: Product[] }>(
+    `${backend}/api/products?populate=*`
+  );
+  const products = list?.data ?? [];
+  return (
+    products.find((p) => getProductSlug(p) === slug) ??
+    products.find((p) => slugifyProductTitle(p.Title) === slug) ??
+    null
+  );
 }
 
 export async function getBlogSections(): Promise<BlogSection[]> {

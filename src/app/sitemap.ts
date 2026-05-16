@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/seo";
+import { productDetailPath } from "@/lib/productSlug";
 import { getBlogSections, getProductsByType } from "@/lib/strapiPublic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -44,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (productSeen.has(p.id)) continue;
     productSeen.add(p.id);
     productEntries.push({
-      url: `${base}/product/${p.id}`,
+      url: `${base}${productDetailPath(p)}`,
       lastModified: p.updatedAt ? new Date(p.updatedAt) : lastMod,
       changeFrequency: "weekly",
       priority: 0.85,

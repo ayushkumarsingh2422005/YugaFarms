@@ -1,3 +1,4 @@
+import { productDetailPath } from "@/lib/productSlug";
 import {
   getBackendUrl,
   stripHtmlToPlain,
@@ -141,7 +142,7 @@ export function buildBreadcrumbJsonLd(items: { name: string; path: string }[]) {
 
 export function buildProductJsonLd(product: Product, backendMediaOrigin: string) {
   const url = getSiteUrl();
-  const productUrl = `${url}/product/${product.id}`;
+  const productUrl = `${url}${productDetailPath(product)}`;
   const desc = stripHtmlToPlain(product.Description || "", 5000);
   const images =
     product.Image?.map((img) =>

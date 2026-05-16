@@ -6,15 +6,16 @@ import {
   buildProductJsonLd,
   productMetaDescription,
 } from "@/lib/seo";
-import { getProductById } from "@/lib/strapiPublic";
+import { getProductBySlug, getSimilarProducts } from "@/lib/strapiPublic";
+import { productDetailPath } from "@/lib/productSlug";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const product = await getProductById(id);
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
   if (!product) {
     return { title: "Product not found", description: "This product could not be found." };
   }
@@ -23,11 +24,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     product.Image?.[0]?.url != null
       ? `${BACKEND}${product.Image[0].url}`
       : undefined;
+  const canonicalPath = productDetailPath(product);
   return {
     title: product.Title,
     description,
     alternates: {
-      canonical: `/product/${id}`,
+      canonical: canonicalPath,
     },
     openGraph: {
       title: `${product.Title} | YugaFarms`,
@@ -38,8 +40,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const { id } = await params;
-  const initialProduct = await getProductById(id);
+  const { slug } = await params;
+  const initialProduct = await getProductBySlug(slug);
+  const similarProducts =
+    initialProduct != null ? await getSimilarProducts(initialProduct) : [];
+  const path = initialProduct ? productDetailPath(initialProduct) : `/product/${slug}`;
 
   const breadcrumbLd =
     initialProduct != null
@@ -49,7 +54,7 @@ export default async function ProductPage({ params }: Props) {
             name: initialProduct.Type,
             path: `/${initialProduct.Type.toLowerCase()}`,
           },
-          { name: initialProduct.Title, path: `/product/${id}` },
+          { name: initialProduct.Title, path },
         ])
       : null;
 
@@ -60,7 +65,10 @@ export default async function ProductPage({ params }: Props) {
     <>
       {breadcrumbLd ? <JsonLd data={breadcrumbLd} /> : null}
       {productLd ? <JsonLd data={productLd} /> : null}
-      <ProductDetailClient initialProduct={initialProduct} />
+      <ProductDetailClient
+        initialProduct={initialProduct}
+        similarProducts={similarProducts}
+      />
     </>
   );
 }

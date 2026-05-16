@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useState } from "react";
+import { productDetailPath } from "@/lib/productSlug";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -101,7 +102,7 @@ export default function DebugProductsPage() {
                     Test Individual Fetch
                   </button>
                   <a
-                    href={`/product/${product.id}`}
+                    href={productDetailPath(product)}
                     className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 inline-block"
                   >
                     View Product Page

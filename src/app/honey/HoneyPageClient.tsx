@@ -5,6 +5,7 @@ import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/app/context/CartContext";
+import { productDetailPath } from "@/lib/productSlug";
 import type { Product, ProductVariant } from "@/lib/strapiPublic";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
@@ -118,7 +119,7 @@ export default function HoneyPageClient({ products }: { products: Product[] }) {
                   return (
                     <div key={product.id} className="rounded-xl md:rounded-2xl transition-all duration-300 group">
                       {/* Product Image */}
-                      <Link href={`/product/${product.id}`} className="block">
+                      <Link href={productDetailPath(product)} className="block">
                         <div className="relative bg-gradient-to-br from-[#f5d26a]/20 to-[#f5d26a]/10 rounded-t-xl md:rounded-t-2xl border-b border-[#4b2e19]/10 flex items-center justify-center overflow-hidden cursor-pointer aspect-square w-full">
                           {product.Image && product.Image.length > 0 ? (
                             <Image 
@@ -149,7 +150,7 @@ export default function HoneyPageClient({ products }: { products: Product[] }) {
                       <div className="p-2 md:p-4 space-y-2 md:space-y-3">
                         {/* Title */}
                         <div>
-                          <Link href={`/product/${product.id}`} className="block group">
+                          <Link href={productDetailPath(product)} className="block group">
                             <h3 className="text-xs md:text-base font-bold text-[#2D2D2D] mb-0.5 md:mb-1 group-hover:text-[#4b2e19] transition-colors line-clamp-2 leading-tight">{product.Title}</h3>
                           </Link>
                           <p className="text-[10px] md:text-xs text-[#2D2D2D]/70 font-semibold line-clamp-1 mt-0.5">{product.PunchLine}</p>

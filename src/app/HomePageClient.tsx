@@ -6,8 +6,10 @@ import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/app/context/CartContext";
 import Image from "next/image";
+import { productDetailPath } from "@/lib/productSlug";
 import type { BannerMedia, Client, Product, ProductVariant } from "@/lib/strapiPublic";
 import { seoBannerImageAlt } from "@/lib/seo";
+import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -355,7 +357,7 @@ export default function HomePageClient({
                   return (
                     <div key={product.id} className="rounded-xl md:rounded-2xl transition-all duration-300 group">
                       {/* Product Image */}
-                      <Link href={`/product/${product.id}`} className="block">
+                      <Link href={productDetailPath(product)} className="block">
                         <div className="relative bg-gradient-to-br from-[#f5d26a]/20 to-[#f5d26a]/10 rounded-t-xl md:rounded-t-2xl border-b border-[#4b2e19]/10 flex items-center justify-center overflow-hidden cursor-pointer aspect-square w-full">
                           {product.Image && product.Image.length > 0 ? (
                             <Image
@@ -386,7 +388,7 @@ export default function HomePageClient({
                       <div className="p-2 md:p-4 space-y-2 md:space-y-3">
                         {/* Title */}
                         <div>
-                          <Link href={`/product/${product.id}`} className="block group">
+                          <Link href={productDetailPath(product)} className="block group">
                             <h3 className="text-xs md:text-base font-bold text-[#2D2D2D] mb-0.5 md:mb-1 group-hover:text-[#4b2e19] transition-colors line-clamp-2 leading-tight">{product.Title}</h3>
                           </Link>
                           <p className="text-[10px] md:text-xs text-[#2D2D2D]/70 font-semibold line-clamp-1 mt-0.5">{product.PunchLine}</p>
@@ -460,8 +462,19 @@ export default function HomePageClient({
       </div>
 
       {/* Why Choose YugaFarms */}
-      <section className="relative z-30 py-12 md:py-16 bg-[#4b2e19]">
-        <div className="container mx-auto px-4">
+      <section className="relative z-30 overflow-hidden bg-[#4b2e19] py-12 md:py-16">
+        <img
+          aria-hidden
+          src="/images/why%20yugafarms.png"
+          alt=""
+          className="pointer-events-none absolute bottom-0 left-0 w-full select-none opacity-[0.32] mix-blend-soft-light"
+          style={{
+            filter:
+              "sepia(1) hue-rotate(302deg) saturate(0.4) brightness(0.5) contrast(0.85)",
+          }}
+        />
+        
+        <div className="container relative z-10 mx-auto px-4">
           <div className="text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">WHY YUGAFARMS?</h2>
 
@@ -507,79 +520,22 @@ export default function HomePageClient({
       </section>
 
       {/* Client Reviews */}
-      <section className="py-12 md:py-20 bg-[#f9f9f9]">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl md:text-[32px] font-semibold text-center text-[#2f4f2f] mb-12">
+      <section className="bg-[#f5f5f5] py-14 md:py-20">
+        <div className="container mx-auto max-w-6xl px-4 md:px-6">
+          <h2 className="mb-10 text-center text-2xl font-bold text-[#1e293b] md:mb-12 md:text-[32px]">
             What Do Our Customers Say
           </h2>
 
-          {clients.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-[#4b2e19] text-lg">No client reviews available at the moment.</p>
-            </div>
-          ) : (
-            <div className="flex overflow-x-auto gap-4 md:grid md:grid-cols-3 md:gap-8 pb-8 px-4 -mx-4 md:mx-0 md:px-0 md:pb-0 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {clients.map((client, idx) => (
-                <div key={idx} className="min-w-[85%] sm:min-w-[60%] md:min-w-0 snap-center flex flex-col justify-between group bg-white rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 h-full">
-                  <p className="text-[#6D6D6D] text-[13px] md:text-[14px] leading-relaxed mb-8 font-light text-left">
-                    {client.Review || 'No review available.'}
-                  </p>
-
-                  <div className="flex items-center gap-4 mt-auto">
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden flex-shrink-0 filter drop-shadow-sm border-2 border-gray-50 bg-gray-100">
-                      {client.Image?.url ? (
-                        <Image
-                          src={`${BACKEND}${client.Image.url}`}
-                          alt={client.Image.alternativeText || client.Name || "Client"}
-                          width={64}
-                          height={64}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Image
-                          src="/images/client.png"
-                          alt={client?.Name || "Client"}
-                          width={64}
-                          height={64}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-start gap-1">
-                      <h3 className="text-[#2D2D2D] font-bold text-[14px] md:text-[16px]">
-                        {client.Name || 'Anonymous'}
-                      </h3>
-                      <div className="flex items-center gap-[2px]">
-                        {Array.from({ length: 5 }).map((_, i) => {
-                          const rating = client.Rating || 5;
-                          return (
-                            <svg
-                              key={i}
-                              className={`w-[14px] h-[14px] ${i < Math.round(rating) ? 'text-[#f5d26a]' : 'text-[#D1D1D1]'} fill-current`}
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                            </svg>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <TestimonialsCarousel clients={clients} />
         </div>
       </section>
-
 
 
       {/* Tradition Banner - Creative Heritage Showcase */}
       <section className="relative pb-20 md:pb-24 bg-gradient-to-br from-[#fdf7f2] via-[#f8f4e6] to-[#f0e6d2] overflow-hidden">
         {/* Wave back to cream before Footer */}
         <div aria-hidden className="relative z-20 mb-10">
-          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="block w-full h-[70px] md:h-[90px] text-[#eef2e9] fill-current">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="block w-full h-[70px] md:h-[90px] text-[#f5f5f5] fill-current">
             <path d="M0,40 C120,80 240,0 360,40 S600,80 720,40 960,0 1080,40 1320,80 1440,40 L1440,0 L0,0 Z"></path>
           </svg>
         </div>

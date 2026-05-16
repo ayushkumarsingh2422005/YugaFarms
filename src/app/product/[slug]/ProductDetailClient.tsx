@@ -6,15 +6,19 @@ import { useRouter } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/app/context/CartContext";
+import { formatInr } from "@/lib/currency";
 import { trackViewItem } from "@/lib/gtag";
+import SimilarProducts from "@/components/SimilarProducts";
 import type { Product, ProductVariant } from "@/lib/strapiPublic";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
 export default function ProductDetailClient({
   initialProduct,
+  similarProducts = [],
 }: {
   initialProduct: Product | null;
+  similarProducts?: Product[];
 }) {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(initialProduct);
@@ -27,7 +31,6 @@ export default function ProductDetailClient({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-  const [openInfoTab, setOpenInfoTab] = useState<string | null>('description');
   const { addToCart, isLoading: cartLoading, items: cartItems, setIsCartOpen } = useCart();
 
   useEffect(() => {
@@ -142,22 +145,21 @@ export default function ProductDetailClient({
   const getProductEmoji = (title: string, type: string) => {
     const titleLower = title.toLowerCase();
     if (type === "Ghee") {
-      if (titleLower.includes('a2') || titleLower.includes('desi')) return '🧈';
-      if (titleLower.includes('classic') || titleLower.includes('cow')) return '🐄';
-      if (titleLower.includes('buffalo')) return '🥛';
-      if (titleLower.includes('organic')) return '🌿';
-      if (titleLower.includes('spiced') || titleLower.includes('spice')) return '🌶️';
-      if (titleLower.includes('family') || titleLower.includes('pack')) return '👨‍👩‍👧‍👦';
-      return '🧈';
-    } else {
-      if (titleLower.includes('wild') || titleLower.includes('forest')) return '🍯';
-      if (titleLower.includes('acacia')) return '🌼';
-      if (titleLower.includes('eucalyptus')) return '🌿';
-      if (titleLower.includes('multi') || titleLower.includes('flower')) return '🌸';
-      if (titleLower.includes('manuka')) return '👑';
-      if (titleLower.includes('family') || titleLower.includes('pack')) return '👨‍👩‍👧‍👦';
-      return '🍯';
+      if (titleLower.includes("a2") || titleLower.includes("desi")) return "\u{1F9C8}";
+      if (titleLower.includes("classic") || titleLower.includes("cow")) return "\u{1F404}";
+      if (titleLower.includes("buffalo")) return "\u{1F95B}";
+      if (titleLower.includes("organic")) return "\u{1F33F}";
+      if (titleLower.includes("spiced") || titleLower.includes("spice")) return "\u{1F336}\u{FE0F}";
+      if (titleLower.includes("family") || titleLower.includes("pack")) return "\u{1F46A}";
+      return "\u{1F9C8}";
     }
+    if (titleLower.includes("wild") || titleLower.includes("forest")) return "\u{1F36F}";
+    if (titleLower.includes("acacia")) return "\u{1F33C}";
+    if (titleLower.includes("eucalyptus")) return "\u{1F33F}";
+    if (titleLower.includes("multi") || titleLower.includes("flower")) return "\u{1F338}";
+    if (titleLower.includes("manuka")) return "\u{1F451}";
+    if (titleLower.includes("family") || titleLower.includes("pack")) return "\u{1F46A}";
+    return "\u{1F36F}";
   };
 
   const getProductGradient = (type: string) => {
@@ -188,7 +190,7 @@ export default function ProductDetailClient({
     return (
       <>
         <TopBar />
-        <main className="min-h-screen bg-gradient-to-br from-[#fdf7f2] via-[#f8f4e6] to-[#f0e6d2] relative overflow-hidden pt-6 md:pt-10">
+        <main className="min-h-screen bg-[#fdfbf7] relative overflow-hidden pt-3 md:pt-4">
           <div className="flex items-center justify-center min-h-[50vh]">
             <div className="text-center">
               <p className="text-red-600 text-lg mb-4">Error: {error || 'Product not found'}</p>
@@ -210,14 +212,13 @@ export default function ProductDetailClient({
   const originalPrice = selectedVariant ? selectedVariant.Price : 0;
   const savings = selectedVariant ? (selectedVariant.Discount || 0) : 0;
   const emoji = getProductEmoji(product.Title, product.Type);
-  const gradient = getProductGradient(product.Type);
   const itemInCart = isItemInCart();
   const cartQuantity = getCartItemQuantity();
 
   return (
     <>
       <TopBar />
-      <main className="min-h-screen bg-gradient-to-br from-[#fdf7f2] via-[#f8f4e6] to-[#f0e6d2] relative overflow-hidden pt-6 md:pt-10">
+      <main className="min-h-screen bg-[#fdfbf7] relative overflow-hidden pt-3 md:pt-4">
         {/* Breadcrumb */}
         <div className="container mx-auto px-4 pt-0">
           <nav className="flex items-center space-x-2 text-sm text-[#2D2D2D]/70 mb-0 w-full overflow-hidden">
@@ -232,13 +233,13 @@ export default function ProductDetailClient({
         </div>
 
         {/* Product Detail Section */}
-        <section className="py-4 md:py-6">
+        <section className="py-2 md:py-4">
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
               {/* Product Images */}
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-3 md:gap-4">
                 {/* Main Image */}
-                <div className={`relative w-full bg-gradient-to-br ${gradient} rounded-3xl flex items-center justify-center overflow-hidden aspect-square`}>
+                <div className="relative w-full rounded-2xl flex items-center justify-center overflow-hidden aspect-square bg-[#f5f2ea] shadow-[0_8px_32px_rgba(75,46,25,0.08)]">
                   {product.Image && product.Image.length > 0 ? (
                     <Image
                       src={`${BACKEND}${product.Image[selectedImageIndex].url}`}
@@ -257,7 +258,7 @@ export default function ProductDetailClient({
                   )}
 
                   {/* Rating Badge */}
-                  <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg">
+                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
                     <div className="flex items-center gap-2">
                       <svg className="w-5 h-5 text-[#f5d26a]" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.802 2.036a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.802-2.036a1 1 0 00-1.176 0l-2.802 2.036c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81H6.93a1 1 0 00.95-.69l1.07-3.292z" />
@@ -274,9 +275,9 @@ export default function ProductDetailClient({
                       <button
                         key={index}
                         onClick={() => setSelectedImageIndex(index)}
-                        className={`relative h-20 shrink-0 snap-start rounded-xl overflow-hidden border-2 transition-all aspect-square ${selectedImageIndex === index
-                          ? 'border-[#4b2e19] shadow-lg'
-                          : 'border-transparent hover:border-[#4b2e19]/50'
+                        className={`relative h-20 shrink-0 snap-start rounded-lg overflow-hidden border transition-all aspect-square ${selectedImageIndex === index
+                          ? 'border-[#4b2e19] ring-1 ring-[#4b2e19]/20'
+                          : 'border-[#e8e4dc] hover:border-[#4b2e19]/40'
                           }`}
                       >
                         <Image
@@ -293,14 +294,15 @@ export default function ProductDetailClient({
               </div>
 
               {/* Product Information */}
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
                 {/* Title, Rating, and Price Details */}
-                <div className="bg-white border-2 border-[#eef2e9] p-5 md:p-6 rounded-xl shadow-sm">
-                  <h1 className="text-2xl md:text-3xl font-bold text-[#2D2D2D] mb-1">{product.Title}</h1>
-                  <p className="text-sm md:text-base text-[#2D2D2D]/80 font-medium mb-3">{product.PunchLine}</p>
+                <div>
+                  <h1 className="text-2xl md:text-[2rem] font-bold text-[#4b2e19] mb-2 leading-tight">{product.Title}</h1>
+                  {product.PunchLine && (
+                    <p className="text-xs md:text-sm uppercase tracking-wider text-[#2D2D2D]/55 font-medium mb-2">{product.PunchLine}</p>
+                  )}
 
-                  {/* Rating and Sales */}
-                  <div className="flex items-center gap-2 mb-5">
+                  <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center gap-[2px]">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <svg key={i} className={`w-4 h-4 md:w-[18px] md:h-[18px] ${i < Math.floor(product.Rating) ? 'text-[#f5d26a]' : 'text-[#D1D1D1]'} fill-current`} viewBox="0 0 24 24">
@@ -316,67 +318,25 @@ export default function ProductDetailClient({
                   {/* Price Block */}
                   <div>
                     <div className="flex items-end gap-3 mb-1">
-                      <span className="text-[28px] md:text-3xl font-bold text-[#2D2D2D] leading-none">₹{currentPrice}</span>
+                      <span className="text-[28px] md:text-3xl font-bold text-[#2D2D2D] leading-none">{formatInr(currentPrice)}</span>
                       {originalPrice > currentPrice && (
-                        <span className="text-lg text-[#2D2D2D]/50 line-through mb-0.5">₹{originalPrice}</span>
+                        <span className="text-lg text-[#2D2D2D]/50 line-through mb-0.5">{formatInr(originalPrice)}</span>
                       )}
                     </div>
-                    <p className="text-xs md:text-[13px] text-[#2D2D2D]/60 mb-4">MRP (incl. of all taxes)</p>
+                    <p className="text-xs md:text-[13px] text-[#2D2D2D]/60 mb-2">MRP (incl. of all taxes)</p>
 
-                    <div className="inline-block bg-[#f5d26a] text-[#4b2e19] text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-sm">
+                    <span className="inline-block rounded-full bg-[#f5d26a]/25 text-[#4b2e19] text-[11px] md:text-xs font-semibold px-4 py-1.5">
                       6% GST Cess included in MRP
-                    </div>
-                  </div>
-
-                  {/* Short Description & Key Benefits */}
-                  <div className="mt-6 pt-5 border-t border-[#eef2e9]">
-                    <p className="text-[#2D2D2D]/80 text-[13px] md:text-[14px] leading-relaxed mb-5">
-                      {/* {product.Type === 'Ghee' 
-                        ? "India's finest certified Cultured Ghee crafted from desi cow milk using the ancient Vedic Bilona method. Free from preservatives, artificial flavors, and chemicals. Aids digestion, boosts immunity, and reduces inflammation."
-                        : product.Description.substring(0, 150) + "..."} */}
-                      {product.Description}
-                    </p>
-                    
-                    {/* Benefit Icons */}
-                    {product.Type === 'Ghee' && (
-                      <div className="grid grid-cols-4 gap-2 text-center mt-2">
-                        <div className="flex flex-col items-center group">
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-[#f5d26a]/50 bg-[#fdf7f2] flex items-center justify-center mb-2 group-hover:bg-[#f5d26a] transition-colors">
-                             <Image src="/images/bilona.png" alt="Bilona Churned" width={24} height={24} className="opacity-80 group-hover:opacity-100" />
-                          </div>
-                          <span className="text-[9px] md:text-[10px] font-bold text-[#4b2e19] uppercase leading-tight">Bilona<br/>Churned</span>
-                        </div>
-                        <div className="flex flex-col items-center group">
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-[#f5d26a]/50 bg-[#483600] flex items-center justify-center mb-2 transition-colors">
-                             <Image src="/images/pure.png" alt="A2 Cow Milk" width={24} height={24} className="opacity-80 group-hover:opacity-100" />
-                          </div>
-                          <span className="text-[9px] md:text-[10px] font-bold text-[#4b2e19] uppercase leading-tight">A2 Cow<br/>Milk</span>
-                        </div>
-                        <div className="flex flex-col items-center group">
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-[#f5d26a]/50 bg-[#fdf7f2] flex items-center justify-center mb-2 group-hover:bg-[#f5d26a] transition-colors">
-                             <Image src="/images/traditionalpreparation.png" alt="Woodfire Process" width={24} height={24} className="opacity-80 group-hover:opacity-100" />
-                          </div>
-                          <span className="text-[9px] md:text-[10px] font-bold text-[#4b2e19] uppercase leading-tight">Woodfire<br/>Process</span>
-                        </div>
-                        <div className="flex flex-col items-center group">
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-[#f5d26a]/50 bg-[#483600] flex items-center justify-center mb-2 transition-colors">
-                             <Image src="/images/madeinsmallbatches.png" alt="Small Batches" width={24} height={24} className="opacity-80 group-hover:opacity-100" />
-                          </div>
-                          <span className="text-[9px] md:text-[10px] font-bold text-[#4b2e19] uppercase leading-tight">Small<br/>Batches</span>
-                        </div>
-                      </div>
-                    )}
+                    </span>
                   </div>
                 </div>
-
-
 
                 {/* Tags/Features */}
                 <div>
                   {/* <h3 className="text-2xl font-bold text-[#4b2e19] mb-3">Key Features</h3> */}
                   <div className="flex flex-wrap gap-3">
                     {(product.Tags ?? []).map((tag, index) => (
-                      <span key={index} className="bg-[#eef2e9] text-[#4b2e19] px-4 py-2 rounded-full font-medium text-sm">
+                      <span key={index} className="bg-[#f5f2ea] text-[#4b2e19] px-3 py-1 rounded-full text-xs font-medium">
                         {tag.Value}
                       </span>
                     ))}
@@ -386,8 +346,8 @@ export default function ProductDetailClient({
                 {/* Variant Selection */}
                 {product.Variants && product.Variants.length > 0 && (
                   <div>
-                    <h3 className="text-2xl font-bold text-[#4b2e19] mb-3">Available Sizes</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <p className="text-sm font-semibold text-[#4b2e19] mb-3">Select size</p>
+                    <div className="flex flex-col gap-3">
                       {product.Variants.map((variant, index) => {
                         const variantPrice = variant.Price - (variant.Discount || 0);
                         const variantSavings = variant.Discount || 0;
@@ -397,21 +357,24 @@ export default function ProductDetailClient({
                           <button
                             key={index}
                             onClick={() => setSelectedVariant(variant)}
-                            className={`p-4 rounded-xl border-2 transition-all text-left ${isSelected
-                              ? 'border-[#4b2e19] bg-[#4b2e19]/5 shadow-lg'
-                              : 'border-[#4b2e19]/20 hover:border-[#4b2e19]/50 bg-white'
+                            className={`overflow-hidden rounded-xl border text-left transition-all shadow-[0_2px_12px_rgba(75,46,25,0.06)] ${isSelected
+                              ? "border-[#4b2e19]"
+                              : "border-[#e8e4dc] hover:border-[#4b2e19]/40"
                               }`}
                           >
-                            <div className="flex justify-between items-center">
+                            <div className={`px-4 py-2 text-sm font-semibold ${isSelected ? "bg-[#4b2e19] text-white" : "bg-[#f5f2ea] text-[#4b2e19]"}`}>
+                              {formatUnit(variant.Weight, product.Type)}
+                            </div>
+                            <div className="flex items-center justify-between gap-3 bg-white px-4 py-3">
                               <div>
-                                <div className="font-semibold text-[#4b2e19]">{formatUnit(variant.Weight, product.Type)}</div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-bold text-[#4b2e19]">₹{variantPrice}</div>
+                                <span className="text-lg font-bold text-[#2D2D2D]">{formatInr(variantPrice)}</span>
                                 {variantSavings > 0 && (
-                                  <div className="text-sm text-red-600">Save ₹{variantSavings}</div>
+                                  <span className="ml-2 text-sm text-[#2D2D2D]/45 line-through">{formatInr(variant.Price)}</span>
                                 )}
                               </div>
+                              {variant.Price > 0 && variantSavings > 0 && (
+                                <span className="text-sm font-semibold text-red-600">{Math.round((variantSavings / variant.Price) * 100)}% off</span>
+                              )}
                             </div>
                           </button>
                         );
@@ -421,17 +384,16 @@ export default function ProductDetailClient({
                 )}
 
                 {/* Add to Cart Actions - Desktop Only */}
-                <div className="hidden md:block sticky bottom-6 z-40 bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl p-6 border border-[#f5d26a]/30">
-
-                  <div className="flex gap-4">
+                <div className="hidden md:block">
+                  <div className="flex gap-3">
                     {itemInCart ? (
                       <>
-                        <div className="flex-1 bg-green-100 text-green-800 py-4 rounded-xl font-semibold text-center border-2 border-green-300 text-lg">
-                          ✓ In Cart ({cartQuantity})
+                        <div className="flex-1 bg-green-50 text-green-800 py-3.5 rounded-full font-semibold text-center">
+                          In Cart ({cartQuantity})
                         </div>
                         <Link
                           href="/cart"
-                          className="px-6 py-4 border-2 border-[#4b2e19] text-[#4b2e19] rounded-xl font-semibold hover:bg-[#4b2e19] hover:text-white transition-colors duration-300"
+                          className="flex items-center justify-center px-5 py-3.5 border border-[#e8e4dc] text-[#4b2e19] rounded-full hover:bg-[#f5f2ea] transition-colors"
                         >
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -441,14 +403,14 @@ export default function ProductDetailClient({
                     ) : (
                       <>
                         <button
-                          className="flex-1 bg-[#4b2e19] text-white py-4 rounded-xl font-semibold hover:bg-[#2f4f2f] transition-colors duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                          className="flex-1 bg-[#4b2e19] text-white py-3.5 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleAddToCart}
                           disabled={cartLoading || !selectedVariant}
                         >
                           {cartLoading ? 'Adding...' : 'Add to Cart'}
                         </button>
                         <button
-                          className="flex-1 bg-white border-2 border-[#4b2e19] text-[#4b2e19] py-4 rounded-xl font-semibold hover:bg-[#4b2e19] hover:text-white transition-colors duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                          className="flex-1 bg-[#f5d26a] text-[#4b2e19] py-3.5 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleBuyNow}
                           disabled={cartLoading || !selectedVariant}
                         >
@@ -456,7 +418,7 @@ export default function ProductDetailClient({
                         </button>
                         <button
                           onClick={toggleLike}
-                          className={`px-6 py-4 border-2 border-[#4b2e19] rounded-xl font-semibold transition-colors duration-300 ${isLiked
+                          className={`px-5 py-3.5 border border-[#e8e4dc] rounded-full transition-colors ${isLiked
                             ? 'bg-[#4b2e19] text-white'
                             : 'text-[#4b2e19] hover:bg-[#4b2e19] hover:text-white'
                             }`}
@@ -471,19 +433,19 @@ export default function ProductDetailClient({
                 </div>
 
                 {/* Trust Badges / USPs */}
-                <div className="grid grid-cols-4 gap-2 pt-4 md:pt-6 border-t border-[#eef2e9] mt-2">
+                <div className="grid grid-cols-4 gap-2 md:gap-3 pt-3">
                   <div className="flex flex-col items-center text-center group">
-                    <svg className="w-10 h-10 md:w-12 md:h-12 mb-2 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-8 h-8 md:w-9 md:h-9 mb-1 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l3 3.5v5.5a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h5z" />
                       <circle cx="6" cy="18" r="2" strokeWidth={1.5} />
                       <circle cx="18" cy="18" r="2" strokeWidth={1.5} />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7v6m4-6v6" />
                     </svg>
-                    <span className="text-[9px] md:text-[11px] text-[#2D2D2D]/80 leading-tight font-medium uppercase tracking-wide">Free shipping<br/><span className="lowercase">above</span> ₹1499</span>
+                    <span className="text-[9px] md:text-[11px] text-[#2D2D2D]/80 leading-tight font-medium uppercase tracking-wide">Free shipping<br/><span className="lowercase">above</span> {formatInr(1499)}</span>
                   </div>
                   
                   <div className="flex flex-col items-center text-center group">
-                    <svg className="w-10 h-10 md:w-12 md:h-12 mb-2 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-8 h-8 md:w-9 md:h-9 mb-1 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 16.5l1.5 1.5 3-3" />
                     </svg>
@@ -491,7 +453,7 @@ export default function ProductDetailClient({
                   </div>
 
                   <div className="flex flex-col items-center text-center group">
-                    <svg className="w-10 h-10 md:w-12 md:h-12 mb-2 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-8 h-8 md:w-9 md:h-9 mb-1 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2A10 10 0 002 12a10 10 0 0010 10 10 10 0 0010-10A10 10 0 0012 2zm0 4a2 2 0 110 4 2 2 0 010-4zm0 12c-2.67 0-8-1.34-8-4v-1.55c2.19-2 5.56-2.45 8-2.45s5.81.45 8 2.45V14c0 2.66-5.33 4-8 4z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-6" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13c0-2 3-5 3-5s3 3 3 5" />
@@ -500,7 +462,7 @@ export default function ProductDetailClient({
                   </div>
 
                   <div className="flex flex-col items-center text-center group">
-                    <svg className="w-10 h-10 md:w-12 md:h-12 mb-2 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-8 h-8 md:w-9 md:h-9 mb-1 text-[#4b2e19] group-hover:text-[#f5d26a] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <span className="text-[9px] md:text-[11px] text-[#2D2D2D]/80 leading-tight font-medium uppercase tracking-wide">COD<br/>available</span>
@@ -511,98 +473,86 @@ export default function ProductDetailClient({
           </div>
         </section>
 
-        {/* Accordion Info Full Width Section */}
-        <section className="py-8 md:py-12 bg-[#fdfcf5] relative z-10 w-full overflow-hidden">
-          <div className="container mx-auto px-4 max-w-5xl">
-            <div className="bg-white/80 p-8 rounded-2xl shadow-sm border border-[#eef2e9]">
-              {/* Item 1: DESCRIPTION */}
-              <div className="border-b border-[#eef2e9]">
-                <button
-                  onClick={() => setOpenInfoTab(openInfoTab === 'description' ? null : 'description')}
-                  className="w-full py-5 flex flex-row items-center justify-between focus:outline-none group"
-                >
-                  <span className="text-sm md:text-base font-bold text-[#2f4f2f] uppercase tracking-widest group-hover:text-[#4b2e19] transition-colors">Description</span>
-                  <span className="text-[#2f4f2f] text-2xl font-light leading-none group-hover:text-[#4b2e19] transition-colors">{openInfoTab === 'description' ? '−' : '+'}</span>
-                </button>
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openInfoTab === 'description' ? 'max-h-96 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <p className="text-sm md:text-base text-[#2D2D2D]/80 leading-relaxed">
-                    {product.Description}
-                  </p>
-                </div>
-              </div>
+        {/* Product details — open sections */}
+        <section className="py-6 md:py-8 bg-white border-t border-[#f0ebe3]">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <h2 className="text-center text-sm font-bold text-[#4b2e19] tracking-[0.2em] uppercase mb-4">
+              Product Description
+            </h2>
+            <p className="text-[#2D2D2D]/75 text-sm md:text-base leading-relaxed text-center">
+              {product.Description}
+            </p>
+          </div>
+        </section>
 
-              {/* Item 2: INGREDIENTS */}
-              <div className="border-b border-[#eef2e9]">
-                <button
-                  onClick={() => setOpenInfoTab(openInfoTab === 'ingredients' ? null : 'ingredients')}
-                  className="w-full py-5 flex flex-row items-center justify-between focus:outline-none group"
-                >
-                  <span className="text-sm md:text-base font-bold text-[#2f4f2f] uppercase tracking-widest group-hover:text-[#4b2e19] transition-colors">Ingredients</span>
-                  <span className="text-[#2f4f2f] text-2xl font-light leading-none group-hover:text-[#4b2e19] transition-colors">{openInfoTab === 'ingredients' ? '−' : '+'}</span>
-                </button>
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openInfoTab === 'ingredients' ? 'max-h-96 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <p className="text-sm md:text-base text-[#2D2D2D]/80 leading-relaxed">
-                    {product.Type === "Ghee" ? "100% Pure A2 Cow Milk Fat." : "100% Pure Raw Honey."}
-                  </p>
+        <section className="py-6 md:py-8 bg-[#fdfbf7]">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <h2 className="text-center text-xl md:text-2xl font-bold text-[#4b2e19] mb-4">Benefits</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 md:gap-x-8">
+              {(product.Type === "Ghee"
+                ? [
+                    { title: "Gut Health", desc: "Aids digestion and supports a healthy gut with essential fatty acids.", icon: "/images/bilona.png" },
+                    { title: "Immunity Boost", desc: "Strengthens natural immunity with fat-soluble vitamins A, D, E & K.", icon: "/images/pure.png" },
+                    { title: "Bilona Churned", desc: "Slow-crafted using the traditional bilona method for maximum nutrition.", icon: "/images/traditionalpreparation.png" },
+                    { title: "Small Batches", desc: "Made in small batches to preserve purity, aroma, and authentic taste.", icon: "/images/madeinsmallbatches.png" },
+                  ]
+                : [
+                    { title: "Gut Health", desc: "Supports digestive wellness with natural enzymes and prebiotics.", icon: "/images/leaf.png" },
+                    { title: "Antioxidant-Rich", desc: "Packed with antioxidants that help fight free radicals naturally.", icon: "/images/pure.png" },
+                    { title: "Raw & Unprocessed", desc: "Cold-extracted and never heated — preserving natural goodness.", icon: "/images/traditionalpreparation.png" },
+                    { title: "Forest Sourced", desc: "Ethically harvested from pristine forests by local beekeepers.", icon: "/images/farm.png" },
+                  ]
+              ).map((item, i) => (
+                <div key={i} className="flex gap-4 items-start">
+                  <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+                    <Image src={item.icon} alt="" width={40} height={40} className="w-10 h-10 object-contain opacity-90" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#4b2e19] mb-1">{item.title}</h3>
+                    <p className="text-sm text-[#2D2D2D]/65 leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-              {/* Item 3: BENEFITS */}
-              <div className="border-b border-[#eef2e9]">
-                <button
-                  onClick={() => setOpenInfoTab(openInfoTab === 'benefits' ? null : 'benefits')}
-                  className="w-full py-5 flex flex-row items-center justify-between focus:outline-none group"
-                >
-                  <span className="text-sm md:text-base font-bold text-[#2f4f2f] uppercase tracking-widest group-hover:text-[#4b2e19] transition-colors">Benefits</span>
-                  <span className="text-[#2f4f2f] text-2xl font-light leading-none group-hover:text-[#4b2e19] transition-colors">{openInfoTab === 'benefits' ? '−' : '+'}</span>
-                </button>
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openInfoTab === 'benefits' ? 'max-h-96 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <p className="text-sm md:text-base text-[#2D2D2D]/80 leading-relaxed">
-                    {product.Type === "Ghee" 
-                      ? "Aids digestion, boosts immunity, reduces inflammation, and promotes overall well-being with essential fatty acids."
-                      : "Rich in antioxidants, soothes sore throats, acts as a natural energy booster, and supports gut health."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Item 4: STORAGE INFO */}
-              <div className="border-b border-[#eef2e9]">
-                <button
-                  onClick={() => setOpenInfoTab(openInfoTab === 'storage' ? null : 'storage')}
-                  className="w-full py-5 flex flex-row items-center justify-between focus:outline-none group"
-                >
-                  <span className="text-sm md:text-base font-bold text-[#2f4f2f] uppercase tracking-widest group-hover:text-[#4b2e19] transition-colors">Storage Info</span>
-                  <span className="text-[#2f4f2f] text-2xl font-light leading-none group-hover:text-[#4b2e19] transition-colors">{openInfoTab === 'storage' ? '−' : '+'}</span>
-                </button>
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openInfoTab === 'storage' ? 'max-h-96 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <p className="text-sm md:text-base text-[#2D2D2D]/80 leading-relaxed">
-                    {product.Type === "Ghee" 
-                      ? "Store in a cool, dry place away from direct sunlight. Do not refrigerate. Always use a clean and dry spoon."
-                      : "Store at room temperature in a dry place. Do not refrigerate. Crystallization is natural; place jar in warm water to reliquefy."}
-                  </p>
-                </div>
-              </div>
+        <section className="py-5 md:py-7 bg-white">
+          <div className="container mx-auto px-4 max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-2xl bg-[#f5f2ea]/60 px-4 py-5">
+              <h3 className="text-sm font-bold text-[#4b2e19] tracking-[0.15em] uppercase mb-3">Ingredients</h3>
+              <p className="text-sm text-[#2D2D2D]/75 leading-relaxed">
+                {product.Type === "Ghee" ? "100% Pure A2 Cow Milk Fat." : "100% Pure Raw Honey."}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#f5f2ea]/60 px-4 py-5">
+              <h3 className="text-sm font-bold text-[#4b2e19] tracking-[0.15em] uppercase mb-3">Storage</h3>
+              <p className="text-sm text-[#2D2D2D]/75 leading-relaxed">
+                {product.Type === "Ghee"
+                  ? "Store in a cool, dry place away from direct sunlight. Do not refrigerate. Always use a clean and dry spoon."
+                  : "Store at room temperature in a dry place. Do not refrigerate. Crystallization is natural; place jar in warm water to reliquefy."}
+              </p>
             </div>
           </div>
         </section>
 
         {/* Infographics Section: Quality Checks & Comparison */}
         {product.Type === 'Ghee' && (
-          <section className="py-12 md:py-16 bg-white border-y border-[#eef2e9] mt-4 shadow-sm relative z-10">
+          <section className="py-6 md:py-8 bg-[#fdfbf7] relative z-10">
             <div className="container mx-auto px-4 max-w-6xl">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold text-[#4b2e19] mb-4">Why Yuga Farms Ghee?</h2>
+              <div className="text-center mb-4">
+                <h2 className="text-xl md:text-2xl font-bold text-[#4b2e19] mb-3">Why Yuga Farms Ghee?</h2>
                 <div className="w-24 h-1 bg-[#f5d26a] mx-auto rounded-full"></div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
                 {/* Custom Quality Check Image/Card */}
-                <div className="bg-[#2f4f2f] rounded-3xl p-8 md:p-10 text-white shadow-xl relative overflow-hidden flex flex-col justify-center transform transition-transform duration-500 hover:scale-[1.01]">
+                <div className="bg-[#4b2e19] rounded-3xl p-5 md:p-7 text-white shadow-[0_8px_32px_rgba(75,46,25,0.12)] relative overflow-hidden flex flex-col justify-center">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl pointer-events-none"></div>
-                  <h3 className="text-4xl md:text-5xl font-bold mb-2">70+ Quality Checks.</h3>
-                  <h3 className="text-4xl md:text-5xl font-bold text-[#f5d26a] mb-10">0% Compromise.</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold mb-1">70+ Quality Checks.</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-[#f5d26a] mb-4">0% Compromise.</h3>
                   
-                  <div className="flex flex-col gap-5 relative z-10">
+                  <div className="flex flex-col gap-3 relative z-10">
                     <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/10">
                       <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
                         <svg className="w-6 h-6 text-[#f5d26a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
@@ -636,10 +586,10 @@ export default function ProductDetailClient({
                 </div>
 
                 {/* Comparison Card */}
-                <div className="bg-[#fdf7f2] rounded-3xl p-8 md:p-10 border border-[#eef2e9] shadow-inner flex flex-col justify-center transform transition-transform duration-500 hover:scale-[1.01]">
-                  <h3 className="text-2xl md:text-3xl font-bold text-[#4b2e19] mb-10 text-center">Yuga Farms vs Ordinary Ghee</h3>
+                <div className="bg-[#f5f2ea] rounded-3xl p-5 md:p-7 shadow-[0_4px_24px_rgba(75,46,25,0.06)] flex flex-col justify-center">
+                  <h3 className="text-lg md:text-xl font-bold text-[#4b2e19] mb-4 text-center">Yuga Farms vs Ordinary Ghee</h3>
                   
-                  <div className="space-y-6 md:space-y-8">
+                  <div className="space-y-4 md:space-y-5">
                     <div className="flex justify-between items-center pb-4 border-b border-[#4b2e19]/10">
                       <div className="w-[45%] text-right font-bold text-[#2f4f2f] text-sm md:text-base">Single-origin A2 milk</div>
                       <div className="w-[10%] flex justify-center"><div className="w-2 h-2 rounded-full bg-[#f5d26a] shadow-[0_0_10px_rgba(245,210,106,0.8)]"></div></div>
@@ -678,17 +628,11 @@ export default function ProductDetailClient({
 
         {/* FAQ Section */}
         {product && (
-          <section className="py-12 md:py-16 bg-[#fdf7f2] border-t border-[#eef2e9] relative z-10">
-            <div className="container mx-auto px-4 max-w-4xl">
-              <div className="text-center mb-10">
-                <h2 className="text-3xl md:text-4xl font-bold text-[#4b2e19] mb-4">Frequently Asked Questions</h2>
-                <div className="w-24 h-1 bg-[#f5d26a] mx-auto rounded-full"></div>
-                <p className="mt-4 text-[#2D2D2D]/70 max-w-2xl mx-auto">
-                  Got questions about our {product.Type}? We've got answers to help you make the best choice for your health.
-                </p>
-              </div>
+          <section className="py-6 md:py-8 bg-white relative z-10">
+            <div className="container mx-auto px-4 max-w-3xl">
+              <h2 className="text-center text-xl md:text-2xl font-bold text-[#4b2e19] mb-4">Faqs</h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(product.Type === "Ghee" ? [
                   { question: "What is the Bilona method?", answer: "The Bilona method is a traditional, slow-churning process where milk is first curdled in clay pots, then the curd is hand-churned using a wooden blender (bilona) to extract makkhan (butter). This butter is then slowly heated on a wood-fire to produce pure, nutrient-rich ghee." },
                   { question: "Why is your ghee slightly yellow?", answer: "Our ghee is primarily made from A2 cow milk, which naturally contains beta-carotene from the cows' natural grazing diet. This gives it a beautiful, rich golden-yellow hue without any artificial coloring." },
@@ -700,23 +644,25 @@ export default function ProductDetailClient({
                   { question: "How is your honey sourced?", answer: "Our honey is sustainably sourced directly from local bee farmers and deep forests. We ensure ethical practices that support bee populations and pristine natural environments without using sugar-feeding." },
                   { question: "Does honey expire?", answer: "Pure honey never truly expires. It is naturally antibacterial and can last indefinitely if stored properly in a tightly sealed glass container at room temperature away from direct sunlight." }
                 ]).map((faq, index) => (
-                  <div 
-                    key={index} 
-                    className={`bg-white rounded-2xl border transition-colors duration-300 overflow-hidden ${openFaqIndex === index ? 'border-[#f5d26a] shadow-md' : 'border-[#eef2e9] shadow-sm hover:border-[#4b2e19]/30'}`}
+                  <div
+                    key={index}
+                    className="rounded-xl border border-[#e8e4dc] bg-white shadow-[0_2px_12px_rgba(75,46,25,0.04)] overflow-hidden"
                   >
                     <button
-                      className="w-full px-6 py-5 text-left flex justify-between items-center focus:outline-none"
+                      className="w-full px-4 py-3 text-left flex justify-between items-start gap-3 focus:outline-none"
                       onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
                     >
-                      <span className="font-bold text-[#4b2e19] text-base md:text-lg pr-4">{faq.question}</span>
-                      <span className={`flex-shrink-0 w-8 h-8 rounded-full border border-[#f5d26a] flex items-center justify-center text-[#f5d26a] transition-transform duration-300 ${openFaqIndex === index ? 'rotate-180 bg-[#f5d26a] text-white' : 'bg-white'}`}>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      <span className="text-sm md:text-base text-[#4b2e19] leading-snug">
+                        <span className="font-bold">Q.</span> {faq.question}
+                      </span>
+                      <span className="shrink-0 text-xl font-light text-[#4b2e19]/60 leading-none pt-0.5">
+                        {openFaqIndex === index ? "\u2212" : "+"}
                       </span>
                     </button>
-                    <div 
-                      className={`px-6 transition-all duration-300 ease-in-out ${openFaqIndex === index ? 'max-h-96 pb-5 opacity-100' : 'max-h-0 py-0 opacity-0'}`}
+                    <div
+                      className={`px-5 transition-all duration-300 ease-in-out overflow-hidden ${openFaqIndex === index ? "max-h-96 pb-4 opacity-100" : "max-h-0 opacity-0"}`}
                     >
-                      <p className="text-[#2D2D2D]/80 leading-relaxed text-sm md:text-base border-t border-[#eef2e9] pt-4">
+                      <p className="text-sm text-[#2D2D2D]/70 leading-relaxed">
                         {faq.answer}
                       </p>
                     </div>
@@ -727,12 +673,14 @@ export default function ProductDetailClient({
           </section>
         )}
 
+        <SimilarProducts products={similarProducts} currentType={product.Type} />
+
         {/* Back to Products */}
-        <section className="py-8 bg-[#eef2e9]">
+        <section className="py-5 md:py-6 bg-white">
           <div className="container mx-auto px-4 text-center">
             <Link
               href={`/${product.Type.toLowerCase()}`}
-              className="inline-flex items-center gap-2 bg-[#4b2e19] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[#2f4f2f] transition-colors duration-300 shadow-lg hover:shadow-xl"
+              className="inline-flex items-center gap-2 bg-[#4b2e19] text-white px-8 py-3 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -743,15 +691,15 @@ export default function ProductDetailClient({
         </section>
 
         {/* Fixed Bottom Bar - Mobile Only */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#4b2e19]/20 shadow-2xl z-50">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-[#e8e4dc] shadow-[0_-4px_24px_rgba(0,0,0,0.06)] z-50">
           <div className="container mx-auto px-4 py-3">
             {/* Price Info */}
             <div className="flex items-center justify-between mb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-[#4b2e19]">₹{currentPrice}</span>
+                  <span className="text-2xl font-bold text-[#4b2e19]">{formatInr(currentPrice)}</span>
                   {originalPrice > currentPrice && (
-                    <span className="text-lg text-[#2D2D2D]/60 line-through">₹{originalPrice}</span>
+                    <span className="text-lg text-[#2D2D2D]/60 line-through">{formatInr(originalPrice)}</span>
                   )}
                 </div>
                 {selectedVariant && (
@@ -762,7 +710,7 @@ export default function ProductDetailClient({
               </div>
               {savings > 0 && (
                 <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-semibold">
-                  Save ₹{savings}
+                  Save {formatInr(savings)}
                 </span>
               )}
             </div>
@@ -772,7 +720,7 @@ export default function ProductDetailClient({
               {itemInCart ? (
                 <>
                   <div className="flex-1 bg-green-100 text-green-800 py-3 rounded-lg font-semibold text-center border-2 border-green-300 text-sm">
-                    ✓ In Cart ({cartQuantity})
+                    In Cart ({cartQuantity})
                   </div>
                   <Link
                     href="/cart"
@@ -786,14 +734,14 @@ export default function ProductDetailClient({
               ) : (
                 <>
                   <button
-                    className="flex-1 bg-[#4b2e19] text-white py-3 rounded-lg font-semibold hover:bg-[#2f4f2f] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex-1 bg-[#4b2e19] text-white py-3 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     onClick={handleAddToCart}
                     disabled={cartLoading || !selectedVariant}
                   >
                     {cartLoading ? 'Adding...' : 'Add to Cart'}
                   </button>
                   <button
-                    className="flex-1 bg-white border-2 border-[#4b2e19] text-[#4b2e19] py-3 rounded-lg font-semibold hover:bg-[#4b2e19] hover:text-white transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex-1 bg-[#f5d26a] text-[#4b2e19] py-3 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     onClick={handleBuyNow}
                     disabled={cartLoading || !selectedVariant}
                   >
