@@ -8,18 +8,18 @@ export default function LabReportsPage() {
   return (
     <>
       <TopBar />
-      <main className="min-h-screen bg-gradient-to-br from-[#fdf7f2] via-[#f8f4e6] to-[#f0e6d2] relative overflow-hidden pt-6 md:pt-10">
+      <main className="min-h-screen bg-gradient-to-br from-[#fdf7f2] via-[#f8f4e6] to-[#f0e6d2] relative overflow-hidden pt-2 md:pt-4">
          {/* Hero Section */}
-         <div className="relative pt-0 md:pt-2">
+         <div className="relative pt-0">
            <div className="container mx-auto px-4">
-             <div className="text-center mb-6 md:mb-10">
+             <div className="text-center mb-4 md:mb-6">
                <div className="inline-block relative">
-                 <h1 className="text-5xl md:text-7xl font-[Pacifico] text-[#4b2e19] mb-4">
+                 <h1 className="text-4xl md:text-6xl font-[Pacifico] text-[#4b2e19] mb-3">
                    Lab <span className="text-[#f5d26a]">Test Reports</span>
                  </h1>
                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-[#f5d26a] to-[#4b2e19] rounded-full"></div>
                </div>
-               <p className="text-xl text-[#2D2D2D]/70 mt-6 max-w-4xl mx-auto leading-relaxed">
+               <p className="text-lg md:text-xl text-[#2D2D2D]/70 mt-4 max-w-4xl mx-auto leading-relaxed">
                  Transparency is the foundation of trust. Every batch of our products undergoes rigorous testing 
                  to ensure purity, authenticity, and safety. Here are our latest lab test reports.
                </p>
@@ -29,13 +29,13 @@ export default function LabReportsPage() {
 
          {/* Wave into Lab Reports */}
          <div aria-hidden className="relative z-20 -mt-2">
-           <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="block w-full h-[70px] md:h-[90px] text-[#eef2e9] fill-current">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="block w-full h-[42px] md:h-[52px] text-[#eef2e9] fill-current">
              <path d="M0,80 C120,40 240,120 360,80 S600,40 720,80 960,120 1080,80 1320,40 1440,80 L1440,120 L0,120 Z"></path>
            </svg>
          </div>
 
         {/* Lab Reports Section */}
-        <section className="py-16 md:py-20 bg-[#eef2e9]">
+        <section className="pt-6 pb-14 md:pt-8 md:pb-16 bg-[#eef2e9]">
           <div className="container mx-auto px-4">
             {/* <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-[Pacifico] text-[#4b2e19] mb-4">Quality Assurance</h2>

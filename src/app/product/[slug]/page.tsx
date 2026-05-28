@@ -6,7 +6,7 @@ import {
   buildProductJsonLd,
   productMetaDescription,
 } from "@/lib/seo";
-import { getProductBySlug, getSimilarProducts } from "@/lib/strapiPublic";
+import { getProductBySlug, getProductComments, getSimilarProducts } from "@/lib/strapiPublic";
 import { productDetailPath } from "@/lib/productSlug";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
@@ -44,6 +44,8 @@ export default async function ProductPage({ params }: Props) {
   const initialProduct = await getProductBySlug(slug);
   const similarProducts =
     initialProduct != null ? await getSimilarProducts(initialProduct) : [];
+  const productComments =
+    initialProduct != null ? await getProductComments(initialProduct.Type) : [];
   const path = initialProduct ? productDetailPath(initialProduct) : `/product/${slug}`;
 
   const breadcrumbLd =
@@ -68,6 +70,7 @@ export default async function ProductPage({ params }: Props) {
       <ProductDetailClient
         initialProduct={initialProduct}
         similarProducts={similarProducts}
+        productComments={productComments}
       />
     </>
   );

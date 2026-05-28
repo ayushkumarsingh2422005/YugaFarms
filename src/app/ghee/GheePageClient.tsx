@@ -36,9 +36,9 @@ export default function GheePageClient({ products }: { products: Product[] }) {
     return gradients[index % gradients.length];
   };
 
-  const getProductBadge = (index: number) => {
-    const badges = ["Best Seller", "Family Favorite", "Premium", "Organic", "Special", "Value"];
-    return badges[index % badges.length];
+  const getProductBadge = (variant?: ProductVariant) => {
+    const raw = variant?.Label;
+    return typeof raw === "string" ? raw.trim() : "";
   };
 
   const formatVolume = (ml: number): string => {
@@ -106,11 +106,10 @@ export default function GheePageClient({ products }: { products: Product[] }) {
               ) : (
                 products.map((product, idx) => {
                   const emoji = getProductEmoji(product.Title);
-                  const badge = getProductBadge(idx);
-                  
                   // Use first variant as default (no variant selection)
                   const variants = product.Variants || [];
                   const defaultVariant = variants[0];
+                  const badge = getProductBadge(defaultVariant);
                   
                   const finalPrice = defaultVariant ? defaultVariant.Price - (defaultVariant.Discount || 0) : 0;
                   const originalPrice = defaultVariant ? defaultVariant.Price : 0;
@@ -132,9 +131,11 @@ export default function GheePageClient({ products }: { products: Product[] }) {
                           ) : (
                             <span className="text-3xl md:text-5xl">{emoji}</span>
                           )}
-                          <div className="absolute top-1.5 left-1.5 md:top-3 md:left-3">
-                            <div className="text-[10px] md:text-xs bg-[#f5d26a] text-[#4b2e19] px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-semibold">{badge}</div>
-                          </div>
+                          {badge && (
+                            <div className="absolute top-1.5 left-1.5 md:top-3 md:left-3">
+                              <div className="text-[10px] md:text-xs bg-[#f5d26a] text-[#4b2e19] px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-semibold">{badge}</div>
+                            </div>
+                          )}
                           <div className="absolute top-1.5 right-1.5 md:top-3 md:right-3 bg-white/90 backdrop-blur-sm rounded-full px-1.5 md:px-2 py-0.5 md:py-1">
                             <div className="flex items-center gap-0.5 md:gap-1">
                               <svg className="w-2.5 h-2.5 md:w-3 md:h-3 text-[#f5d26a]" fill="currentColor" viewBox="0 0 20 20">

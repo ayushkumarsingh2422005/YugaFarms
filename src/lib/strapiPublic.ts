@@ -40,6 +40,7 @@ export type ProductVariant = {
   Discount: number;
   Weight: number;
   Stock: number;
+  Label?: string | null;
 };
 
 export type ProductTag = {
@@ -57,6 +58,7 @@ export type Product = {
   id: number;
   slug?: string | null;
   Title: string;
+  Order?: number | null;
   Description: string;
   Rating: number;
   PunchLine: string;
@@ -117,6 +119,21 @@ export type BlogSection = {
   publishedAt: string;
 };
 
+export type ProductCommentType = "Common" | "Ghee" | "Honey";
+
+export type ProductComment = {
+  id: number;
+  Comment: string;
+  Type: ProductCommentType;
+  Rating?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+  user?: {
+    id: number;
+    username?: string | null;
+  } | null;
+};
+
 export async function getBannerMedia(): Promise<BannerMedia[]> {
   const backend = getBackendUrl();
   const data = await fetchStrapiJson<{ data?: { Banner?: BannerMedia[] } }>(
@@ -128,7 +145,7 @@ export async function getBannerMedia(): Promise<BannerMedia[]> {
 export async function getTopPicksProducts(): Promise<Product[]> {
   const backend = getBackendUrl();
   const data = await fetchStrapiJson<{ data?: Product[] }>(
-    `${backend}/api/products?filters[TopPicks][$eq]=true&populate=*&sort=NumberOfPurchase:desc`
+    `${backend}/api/products?filters[TopPicks][$eq]=true&populate=*&sort[0]=Order:asc&sort[1]=NumberOfPurchase:desc`
   );
   return data?.data ?? [];
 }
@@ -142,16 +159,16 @@ export async function getClients(): Promise<Client[]> {
 export async function getProductsByType(type: "Ghee" | "Honey"): Promise<Product[]> {
   const backend = getBackendUrl();
   const data = await fetchStrapiJson<{ data?: Product[] }>(
-    `${backend}/api/products?filters[Type][$eq]=${type}&filters[TopPicks][$eq]=false&populate=*`
+    `${backend}/api/products?filters[Type][$eq]=${type}&filters[TopPicks][$eq]=false&populate=*&sort[0]=Order:asc&sort[1]=NumberOfPurchase:desc`
   );
   return data?.data ?? [];
 }
 
-/** All live products of a type (includes Top Picks), sorted by popularity. */
+/** All live products of a type (includes Top Picks), sorted by configured order. */
 export async function getAllProductsByType(type: "Ghee" | "Honey"): Promise<Product[]> {
   const backend = getBackendUrl();
   const data = await fetchStrapiJson<{ data?: Product[] }>(
-    `${backend}/api/products?filters[Type][$eq]=${type}&populate=*&sort=NumberOfPurchase:desc`
+    `${backend}/api/products?filters[Type][$eq]=${type}&populate=*&sort[0]=Order:asc&sort[1]=NumberOfPurchase:desc`
   );
   return data?.data ?? [];
 }
@@ -237,6 +254,25 @@ export async function getBlogBySlug(slug: string): Promise<BlogSection | null> {
   );
   const rows = data?.data;
   return rows && rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Fetch comments applicable to a product type:
+ * - Common comments
+ * - Type-specific comments (Ghee/Honey)
+ */
+export async function getProductComments(type: "Ghee" | "Honey"): Promise<ProductComment[]> {
+  const backend = getBackendUrl();
+  const url = `${backend}/api/comments?filters[$or][0][Type][$eq]=Common&filters[$or][1][Type][$eq]=${type}&sort=createdAt:desc&populate[user][fields][0]=id&populate[user][fields][1]=username`;
+  let data: { data?: ProductComment[] } | null = null;
+  try {
+    // Reviews should reflect immediately after submit/edit; avoid SSR revalidate cache here.
+    const res = await fetch(url, { cache: "no-store" });
+    if (res.ok) data = (await res.json()) as { data?: ProductComment[] };
+  } catch {
+    data = null;
+  }
+  return (data?.data ?? []).filter((row) => Boolean(row?.Comment?.trim()));
 }
 
 export function stripHtmlToPlain(text: string, maxLen: number): string {

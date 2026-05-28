@@ -260,9 +260,9 @@ export default function HomePageClient({
     return '🥜'; // Default for oils
   };
 
-  const getProductBadge = (index: number) => {
-    const badges = ["Best Seller", "Popular", "Premium", "New", "Family Pack", "Value"];
-    return badges[index % badges.length];
+  const getProductBadge = (variant?: ProductVariant) => {
+    const raw = variant?.Label;
+    return typeof raw === "string" ? raw.trim() : "";
   };
 
   const formatVolume = (ml: number): string => {
@@ -305,8 +305,8 @@ export default function HomePageClient({
 
       {/* Wave into Our Top Picks */}
       <div className="container mx-auto px-4 -mt-20 md:mt-0 py-2 text-center bg-[#eef2e9] flex flex-col gap-1 relative z-10 pt-6">
-        <h1 className="m-0 text-2xl md:text-3xl font-bold text-[#4b2e19]">Welcome To YugaFarms!</h1>
-        <p className="m-0 text-lg md:text-xl text-[#2D2D2D]/70">You're One Step Closer to Purity</p>
+        <h1 className="m-0 text-2xl md:text-3xl font-bold text-[#4b2e19]">Buy Pure A2 Ghee &amp; Raw Honey Online</h1>
+        <p className="m-0 text-lg md:text-xl text-[#2D2D2D]/70">Farm-fresh, lab-tested, traditionally crafted by YugaFarms</p>
       </div>
       {/* Our Top Picks (soft sage background) */}
       <div className="bg-[#eef2e9] py-6">
@@ -335,13 +335,12 @@ export default function HomePageClient({
               ) : (
                 topProducts.map((product, idx) => {
                   const emoji = getProductEmoji(product.Title, product.Type);
-                  const badge = getProductBadge(idx);
-
                   // Calculate pricing from variants
                   const variants = product.Variants || [];
                   const hasVariants = variants.length > 0;
                   const selectedVariantId = selectedVariants[product.id];
                   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0];
+                  const badge = getProductBadge(selectedVariant);
 
                   const handleVariantChange = (variantId: number) => {
                     setSelectedVariants(prev => ({
@@ -370,9 +369,11 @@ export default function HomePageClient({
                           ) : (
                             <span className="text-3xl md:text-5xl">{emoji}</span>
                           )}
-                          <div className="absolute top-1.5 left-1.5 md:top-3 md:left-3">
-                            <div className="text-[10px] md:text-xs bg-[#f5d26a] text-[#4b2e19] px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-semibold">{badge}</div>
-                          </div>
+                          {badge && (
+                            <div className="absolute top-1.5 left-1.5 md:top-3 md:left-3">
+                              <div className="text-[10px] md:text-xs bg-[#f5d26a] text-[#4b2e19] px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-semibold">{badge}</div>
+                            </div>
+                          )}
                           <div className="absolute top-1.5 right-1.5 md:top-3 md:right-3 bg-white/90 backdrop-blur-sm rounded-full px-1.5 md:px-2 py-0.5 md:py-1">
                             <div className="flex items-center gap-0.5 md:gap-1">
                               <svg className="w-2.5 h-2.5 md:w-3 md:h-3 text-[#f5d26a]" fill="currentColor" viewBox="0 0 20 20">

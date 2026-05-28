@@ -9,6 +9,7 @@ import {
   trackAddToCart,
   trackRemoveFromCart,
 } from "@/lib/gtag";
+import { notifyCartSync } from "@/lib/waNotify";
 
 export type CartItem = {
   productId: number;
@@ -296,6 +297,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         throw new Error("Failed to save cart to backend");
       }
+
+      const phone = (user as { Phone?: string })?.Phone;
+      notifyCartSync({
+        userId: user.id,
+        phone: phone ?? undefined,
+        items: cartItems,
+        totalItems: cartItems.reduce((s, i) => s + i.quantity, 0),
+        totalPrice: cartItems.reduce((s, i) => s + i.price * i.quantity, 0),
+      });
     } catch (error) {
       console.error("Error saving cart to backend:", error);
       throw error;

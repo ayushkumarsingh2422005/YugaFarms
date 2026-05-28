@@ -151,10 +151,6 @@ export default function TopBar() {
     const menuCategories = [
         { href: '/ghee', label: 'A2 Ghee', icon: <IconGhee />, arrow: false, subItems: null },
         { href: '/honey', label: 'Honey', icon: <IconOils />, arrow: false, subItems: null },
-        { href: null, label: 'Shop', icon: <IconShop />, arrow: true, subItems: [
-            { href: '/ghee', label: 'Ghee', icon: <IconGhee /> },
-            { href: '/honey', label: 'Honey', icon: <IconOils /> },
-        ]},
         { href: '/blogs', label: 'Blogs', icon: <IconBlogs />, arrow: true, subItems: null },
         { href: '/about', label: 'About Us', icon: <IconAllProducts />, arrow: false, subItems: null },
         { href: '/contact', label: 'Contact', icon: <IconComboPacks />, arrow: false, subItems: null },

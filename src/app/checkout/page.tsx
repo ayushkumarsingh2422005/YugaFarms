@@ -12,6 +12,7 @@ import {
 } from "@/lib/metaAdvancedMatching";
 import { trackBeginCheckout } from "@/lib/gtag";
 import { buildEventProducts, trackCustomerEvent } from "@/lib/customerEvents";
+import { notifyOrderPlaced } from "@/lib/waNotify";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -362,6 +363,16 @@ export default function CheckoutPage() {
 
     const order = await response.json();
 
+    notifyOrderPlaced({
+      strapiOrderId: order.data.id,
+      orderNumber: order.data.orderNumber,
+      total: finalTotal,
+      phone: cleanShippingPhone,
+      userId: user?.id,
+      customerName: shippingAddress.fullName,
+      items,
+    });
+
     // Clear cart and redirect to success page
     await clearCart();
     router.push(`/order-success/${order.data.id}`);
@@ -413,6 +424,16 @@ export default function CheckoutPage() {
     }
 
     const order = await response.json();
+
+    notifyOrderPlaced({
+      strapiOrderId: order.data.id,
+      orderNumber: order.data.orderNumber,
+      total: finalTotal,
+      phone: cleanShippingPhone,
+      userId: user?.id,
+      customerName: shippingAddress.fullName,
+      items,
+    });
 
     // Check if Razorpay is properly configured on frontend
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID === 'your_razorpay_key_id_here') {

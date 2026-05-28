@@ -6,22 +6,38 @@ import { useRouter } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/app/context/CartContext";
+import { useAuth } from "@/app/context/AuthContext";
 import { formatInr } from "@/lib/currency";
 import { trackViewItem } from "@/lib/gtag";
 import SimilarProducts from "@/components/SimilarProducts";
-import type { Product, ProductVariant } from "@/lib/strapiPublic";
+import type { Product, ProductComment, ProductVariant } from "@/lib/strapiPublic";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
 export default function ProductDetailClient({
   initialProduct,
   similarProducts = [],
+  productComments = [],
 }: {
   initialProduct: Product | null;
   similarProducts?: Product[];
+  productComments?: ProductComment[];
 }) {
   const router = useRouter();
+  const { user, jwt } = useAuth();
   const [product, setProduct] = useState<Product | null>(initialProduct);
+  const [comments, setComments] = useState<ProductComment[]>(productComments);
+  const [newComment, setNewComment] = useState("");
+  const [newRating, setNewRating] = useState<number>(5);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [editRating, setEditRating] = useState<number>(5);
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false);
+  const [isDeletingCommentId, setIsDeletingCommentId] = useState<number | null>(null);
+  const [ratingAvg, setRatingAvg] = useState<number>(initialProduct?.Rating ?? 0);
+  const [ratingCount, setRatingCount] = useState<number>(initialProduct?.NumberOfPurchase ?? 0);
+  const [commentStatus, setCommentStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
     initialProduct ? null : "Product not found"
   );
@@ -35,6 +51,15 @@ export default function ProductDetailClient({
 
   useEffect(() => {
     setProduct(initialProduct);
+    setComments(productComments);
+    setNewComment("");
+    setNewRating(5);
+    setEditingCommentId(null);
+    setEditCommentText("");
+    setEditRating(5);
+    setRatingAvg(initialProduct?.Rating ?? 0);
+    setRatingCount(initialProduct?.NumberOfPurchase ?? 0);
+    setCommentStatus(null);
     setError(initialProduct ? null : "Product not found");
     setSelectedImageIndex(0);
     if (initialProduct?.Variants?.length) {
@@ -75,6 +100,199 @@ export default function ProductDetailClient({
       quantity: 1,
     });
   }, [product, selectedVariant]);
+
+  useEffect(() => {
+    const loadComments = async () => {
+      if (!product) return;
+      try {
+        const url = `${BACKEND}/api/comments?filters[$or][0][Type][$eq]=Common&filters[$or][1][Type][$eq]=${product.Type}&sort=createdAt:desc&populate[user][fields][0]=id&populate[user][fields][1]=username`;
+        const headers: Record<string, string> = {};
+        if (jwt) {
+          headers.Authorization = `Bearer ${jwt}`;
+        }
+        const res = await fetch(url, { cache: "no-store", headers });
+        if (!res.ok) return;
+        const data = (await res.json()) as { data?: ProductComment[] };
+        const next = (data.data ?? []).filter((row) => Boolean(row?.Comment?.trim()));
+        setComments(next);
+      } catch {
+        // Keep existing state silently on fetch failure.
+      }
+    };
+
+    void loadComments();
+  }, [product?.Type, jwt]);
+
+  const submitComment = async () => {
+    if (!product) return;
+    const comment = newComment.trim();
+    if (!comment) {
+      setCommentStatus("Please write your comment first.");
+      return;
+    }
+    if (!jwt) {
+      setCommentStatus("Please login to add a comment.");
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    setCommentStatus(null);
+    try {
+      const res = await fetch(`${BACKEND}/api/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          data: {
+            Comment: comment,
+            Type: product.Type,
+            Rating: newRating,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || "Failed to submit comment");
+      }
+
+      const created = (await res.json()) as { data?: ProductComment };
+      if (created?.data) {
+        setComments((prev) => [created.data!, ...prev]);
+      }
+      setRatingAvg((prevAvg) => {
+        const safeCount = Math.max(0, ratingCount);
+        return safeCount === 0 ? newRating : (prevAvg * safeCount + newRating) / (safeCount + 1);
+      });
+      setRatingCount((prev) => prev + 1);
+      setNewComment("");
+      setNewRating(5);
+      setCommentStatus("Comment posted successfully.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to submit comment";
+      setCommentStatus(msg);
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const startEditComment = (row: ProductComment) => {
+    setEditingCommentId(row.id);
+    setEditCommentText(row.Comment ?? "");
+    setEditRating(typeof row.Rating === "number" ? Math.round(row.Rating) : 5);
+    setCommentStatus(null);
+  };
+
+  const isCommentOwner = (row: ProductComment) => {
+    if (!user?.id || !row.user?.id) return false;
+    return String(row.user.id) === String(user.id);
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditCommentText("");
+    setEditRating(5);
+  };
+
+  const updateComment = async () => {
+    if (!jwt || !editingCommentId) {
+      setCommentStatus("Please login to edit your comment.");
+      return;
+    }
+    const text = editCommentText.trim();
+    if (!text) {
+      setCommentStatus("Comment cannot be empty.");
+      return;
+    }
+
+    setIsUpdatingComment(true);
+    setCommentStatus(null);
+    try {
+      const res = await fetch(`${BACKEND}/api/comments/${editingCommentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          data: {
+            Comment: text,
+            Rating: editRating,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || "Failed to update comment");
+      }
+
+      const updated = (await res.json()) as { data?: ProductComment };
+      if (updated?.data) {
+        const oldRow = comments.find((row) => row.id === editingCommentId);
+        const oldRating = typeof oldRow?.Rating === "number" ? oldRow.Rating : null;
+        setComments((prev) => prev.map((row) => (row.id === updated.data!.id ? updated.data! : row)));
+        if (typeof oldRating === "number" && oldRating !== editRating && ratingCount > 0) {
+          setRatingAvg((prevAvg) => {
+            const total = prevAvg * ratingCount - oldRating + editRating;
+            return total / ratingCount;
+          });
+        }
+      }
+      setCommentStatus("Review updated successfully.");
+      cancelEditComment();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update comment";
+      setCommentStatus(msg);
+    } finally {
+      setIsUpdatingComment(false);
+    }
+  };
+
+  const deleteComment = async (row: ProductComment) => {
+    if (!jwt) {
+      setCommentStatus("Please login to delete your comment.");
+      return;
+    }
+    if (!isCommentOwner(row)) {
+      setCommentStatus("You can delete only your own comment.");
+      return;
+    }
+
+    setIsDeletingCommentId(row.id);
+    setCommentStatus(null);
+    try {
+      const res = await fetch(`${BACKEND}/api/comments/${row.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || "Failed to delete comment");
+      }
+
+      setComments((prev) => prev.filter((c) => c.id !== row.id));
+      if (ratingCount > 0 && typeof row.Rating === "number") {
+        const removedRating = row.Rating;
+        setRatingAvg((prevAvg) => {
+          if (ratingCount <= 1) return product?.Rating ?? 0;
+          const total = prevAvg * ratingCount - removedRating;
+          return total / (ratingCount - 1);
+        });
+        setRatingCount((prev) => Math.max(0, prev - 1));
+      }
+      if (editingCommentId === row.id) {
+        cancelEditComment();
+      }
+      setCommentStatus("Review deleted successfully.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete comment";
+      setCommentStatus(msg);
+    } finally {
+      setIsDeletingCommentId(null);
+    }
+  };
 
   const toggleLike = () => {
     if (!product) return;
@@ -214,6 +432,14 @@ export default function ProductDetailClient({
   const emoji = getProductEmoji(product.Title, product.Type);
   const itemInCart = isItemInCart();
   const cartQuantity = getCartItemQuantity();
+  const ctaAttentionClass = "cta-wiggle";
+  const ratedComments = comments.filter((c) => typeof c.Rating === "number");
+  const averageRating = ratingCount > 0 ? ratingAvg : product.Rating;
+  const ratingBreakdown = [5, 4, 3, 2, 1].map((star) => {
+    const count = ratedComments.filter((c) => Math.round(c.Rating as number) === star).length;
+    const percent = ratedComments.length ? Math.round((count / ratedComments.length) * 100) : 0;
+    return { star, count, percent };
+  });
 
   return (
     <>
@@ -403,14 +629,14 @@ export default function ProductDetailClient({
                     ) : (
                       <>
                         <button
-                          className="flex-1 bg-[#4b2e19] text-white py-3.5 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`flex-1 bg-[#4b2e19] text-white py-3.5 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ctaAttentionClass}`}
                           onClick={handleAddToCart}
                           disabled={cartLoading || !selectedVariant}
                         >
                           {cartLoading ? 'Adding...' : 'Add to Cart'}
                         </button>
                         <button
-                          className="flex-1 bg-[#f5d26a] text-[#4b2e19] py-3.5 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`flex-1 bg-[#f5d26a] text-[#4b2e19] py-3.5 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ctaAttentionClass}`}
                           onClick={handleBuyNow}
                           disabled={cartLoading || !selectedVariant}
                         >
@@ -479,7 +705,7 @@ export default function ProductDetailClient({
             <h2 className="text-center text-sm font-bold text-[#4b2e19] tracking-[0.2em] uppercase mb-4">
               Product Description
             </h2>
-            <p className="text-[#2D2D2D]/75 text-sm md:text-base leading-relaxed text-center">
+            <p className="text-[#2D2D2D]/75 text-sm md:text-base leading-relaxed text-center whitespace-pre-wrap">
               {product.Description}
             </p>
           </div>
@@ -502,17 +728,22 @@ export default function ProductDetailClient({
                     { title: "Raw & Unprocessed", desc: "Cold-extracted and never heated — preserving natural goodness.", icon: "/images/traditionalpreparation.png" },
                     { title: "Forest Sourced", desc: "Ethically harvested from pristine forests by local beekeepers.", icon: "/images/farm.png" },
                   ]
-              ).map((item, i) => (
-                <div key={i} className="flex gap-4 items-start">
-                  <div className="w-12 h-12 shrink-0 flex items-center justify-center">
-                    <Image src={item.icon} alt="" width={40} height={40} className="w-10 h-10 object-contain opacity-90" />
+              ).map((item, i) => {
+                const needsBrownBg =
+                  item.icon === "/images/madeinsmallbatches.png" ||
+                  item.icon === "/images/pure.png";
+                return (
+                  <div key={i} className="flex gap-4 items-start">
+                    <div className={`w-12 h-12 shrink-0 flex items-center justify-center ${needsBrownBg ? "rounded-full bg-[#4b2e19]" : ""}`}>
+                      <Image src={item.icon} alt="" width={40} height={40} className="w-10 h-10 object-contain opacity-90" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#4b2e19] mb-1">{item.title}</h3>
+                      <p className="text-sm text-[#2D2D2D]/65 leading-relaxed">{item.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-[#4b2e19] mb-1">{item.title}</h3>
-                    <p className="text-sm text-[#2D2D2D]/65 leading-relaxed">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -629,7 +860,160 @@ export default function ProductDetailClient({
         {/* FAQ Section */}
         {product && (
           <section className="py-6 md:py-8 bg-white relative z-10">
-            <div className="container mx-auto px-4 max-w-3xl">
+            <div className="container mx-auto px-4 max-w-6xl">
+              <div className="mb-8 rounded-2xl border border-[#e8e4dc] bg-[#fdfbf7] p-4 md:p-6">
+                <h2 className="text-xl md:text-2xl font-bold text-[#4b2e19] mb-4">Ratings & Reviews</h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+                  <div className="rounded-xl border border-[#e8e4dc] bg-white p-4">
+                    <div className="flex items-end gap-2">
+                      <span className="text-4xl font-bold text-[#2D2D2D]">{averageRating.toFixed(1)}</span>
+                      <span className="text-[#f5d26a] text-lg">★</span>
+                    </div>
+                    <p className="text-sm text-[#2D2D2D]/60 mt-1">
+                      {ratingCount} ratings • {comments.length} reviews
+                    </p>
+                    <div className="mt-4 space-y-2">
+                      {ratingBreakdown.map((row) => (
+                        <div key={row.star} className="grid grid-cols-[20px_1fr_32px] items-center gap-2 text-xs">
+                          <span className="text-[#4b2e19]">{row.star}★</span>
+                          <div className="h-2 rounded bg-[#f1ede6] overflow-hidden">
+                            <div
+                              className="h-2 rounded bg-[#4b2e19]"
+                              style={{ width: `${row.percent}%` }}
+                            />
+                          </div>
+                          <span className="text-[#2D2D2D]/60 text-right">{row.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e8e4dc] bg-white p-4">
+                    <p className="text-sm text-[#2D2D2D]/75 mb-3">
+                      Share your review. It will show on all <strong>{product.Type}</strong> products.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder={`Write your ${product.Type} review...`}
+                        rows={3}
+                        className="w-full rounded-lg border border-[#e8e4dc] bg-[#fdfbf7] px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#4b2e19]/20"
+                      />
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-[#2D2D2D]/70">Your Rating</label>
+                          <select
+                            value={newRating}
+                            onChange={(e) => setNewRating(Number(e.target.value))}
+                            className="rounded-md border border-[#e8e4dc] bg-[#fdfbf7] px-2 py-1 text-sm text-[#2D2D2D]"
+                          >
+                            {[5, 4, 3, 2, 1].map((r) => (
+                              <option key={r} value={r}>
+                                {r} Star{r > 1 ? "s" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          onClick={submitComment}
+                          disabled={isSubmittingComment}
+                          className="bg-[#4b2e19] text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isSubmittingComment ? "Posting..." : user ? "Rate Product" : "Login to Rate"}
+                        </button>
+                      </div>
+                      {commentStatus && (
+                        <p className="text-xs text-[#4b2e19]">{commentStatus}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 divide-y divide-[#f0f0f0]">
+                  {comments.length > 0 ? (
+                    comments.slice(0, 8).map((row) => (
+                      <article key={row.id} className="py-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-flex items-center rounded bg-[#4b2e19] text-white text-xs font-semibold px-2 py-0.5">
+                            {typeof row.Rating === "number" ? Math.max(0, Math.min(5, Math.round(row.Rating))) : 5} ★
+                          </span>
+                          <span className="text-xs text-[#2D2D2D]/60">
+                            Verified {product.Type} buyer
+                          </span>
+                          <span className="text-xs text-[#4b2e19] font-medium">
+                            • {row.user?.username?.trim() || "Yuga Farms Customer"}
+                          </span>
+                          {isCommentOwner(row) && editingCommentId !== row.id && (
+                            <div className="ml-auto flex items-center gap-3">
+                              <button
+                                onClick={() => startEditComment(row)}
+                                className="text-xs font-semibold text-[#4b2e19] hover:underline"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => deleteComment(row)}
+                                disabled={isDeletingCommentId === row.id}
+                                className="text-xs font-semibold text-red-700 hover:underline disabled:opacity-60"
+                              >
+                                {isDeletingCommentId === row.id ? "Deleting..." : "Delete"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {editingCommentId === row.id ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editCommentText}
+                              onChange={(e) => setEditCommentText(e.target.value)}
+                              rows={3}
+                              className="w-full rounded-lg border border-[#e8e4dc] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#4b2e19]/20"
+                            />
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-[#2D2D2D]/70">Rating</label>
+                              <select
+                                value={editRating}
+                                onChange={(e) => setEditRating(Number(e.target.value))}
+                                className="rounded-md border border-[#e8e4dc] bg-[#fdfbf7] px-2 py-1 text-xs text-[#2D2D2D]"
+                              >
+                                {[5, 4, 3, 2, 1].map((r) => (
+                                  <option key={r} value={r}>
+                                    {r} Star{r > 1 ? "s" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="ml-auto flex gap-2">
+                                <button
+                                  onClick={cancelEditComment}
+                                  className="text-xs px-3 py-1 rounded border border-[#e8e4dc] text-[#2D2D2D]"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={updateComment}
+                                  disabled={isUpdatingComment}
+                                  className="text-xs px-3 py-1 rounded bg-[#4b2e19] text-white disabled:opacity-60"
+                                >
+                                  {isUpdatingComment ? "Saving..." : "Save"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-[#2D2D2D] leading-relaxed">{row.Comment}</p>
+                        )}
+                      </article>
+                    ))
+                  ) : (
+                    <p className="text-center text-sm text-[#2D2D2D]/60 py-6">
+                      No reviews yet for {product.Type}. Be the first to rate this product.
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <h2 className="text-center text-xl md:text-2xl font-bold text-[#4b2e19] mb-4">Faqs</h2>
 
               <div className="space-y-3">
@@ -734,14 +1118,14 @@ export default function ProductDetailClient({
               ) : (
                 <>
                   <button
-                    className="flex-1 bg-[#4b2e19] text-white py-3 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className={`flex-1 bg-[#4b2e19] text-white py-3 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${ctaAttentionClass}`}
                     onClick={handleAddToCart}
                     disabled={cartLoading || !selectedVariant}
                   >
                     {cartLoading ? 'Adding...' : 'Add to Cart'}
                   </button>
                   <button
-                    className="flex-1 bg-[#f5d26a] text-[#4b2e19] py-3 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className={`flex-1 bg-[#f5d26a] text-[#4b2e19] py-3 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${ctaAttentionClass}`}
                     onClick={handleBuyNow}
                     disabled={cartLoading || !selectedVariant}
                   >
@@ -767,6 +1151,26 @@ export default function ProductDetailClient({
         {/* Spacer for fixed bottom bar on mobile */}
         <div className="md:hidden h-32"></div>
       </main>
+      <style jsx>{`
+        .cta-wiggle {
+          animation: ctaWiggle 3.2s ease-in-out infinite;
+          transform-origin: center;
+        }
+        .cta-wiggle:hover,
+        .cta-wiggle:focus-visible,
+        .cta-wiggle:disabled {
+          animation-play-state: paused;
+        }
+        @keyframes ctaWiggle {
+          0%, 88%, 100% { transform: rotate(0deg); }
+          90% { transform: rotate(-1.2deg); }
+          94% { transform: rotate(1.2deg); }
+          97% { transform: rotate(-0.8deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .cta-wiggle { animation: none; }
+        }
+      `}</style>
       <Footer />
     </>
   );
