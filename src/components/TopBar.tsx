@@ -128,7 +128,6 @@ export default function TopBar() {
     const { user, logout } = useAuth()
     const { totalItems, setIsCartOpen } = useCart()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-    const [isShopOpen, setIsShopOpen] = React.useState(false)
     // Lock body scroll when mobile menu is open
     React.useEffect(() => {
         if (isMobileMenuOpen) {
@@ -149,11 +148,11 @@ export default function TopBar() {
     ]
 
     const menuCategories = [
-        { href: '/ghee', label: 'A2 Ghee', icon: <IconGhee />, arrow: false, subItems: null },
-        { href: '/honey', label: 'Honey', icon: <IconOils />, arrow: false, subItems: null },
-        { href: '/blogs', label: 'Blogs', icon: <IconBlogs />, arrow: true, subItems: null },
-        { href: '/about', label: 'About Us', icon: <IconAllProducts />, arrow: false, subItems: null },
-        { href: '/contact', label: 'Contact', icon: <IconComboPacks />, arrow: false, subItems: null },
+        { href: '/ghee', label: 'A2 Ghee', icon: <IconGhee />, arrow: false },
+        { href: '/honey', label: 'Honey', icon: <IconOils />, arrow: false },
+        { href: '/blogs', label: 'Blogs', icon: <IconBlogs />, arrow: true },
+        { href: '/about', label: 'About Us', icon: <IconAllProducts />, arrow: false },
+        { href: '/contact', label: 'Contact', icon: <IconComboPacks />, arrow: false },
     ]
 
     return (
@@ -362,58 +361,10 @@ export default function TopBar() {
                             </Link>
                         </div>
                     )}
-                    {menuCategories.map((item, idx) => {
-                        // Shop: accordion with sub-items
-                        if (item.subItems) {
-                            return (
-                                <div key={idx}>
-                                    <button
-                                        onClick={() => setIsShopOpen(v => !v)}
-                                        className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white hover:bg-[#fdf7f2] transition-colors duration-150 group"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-[#4b2e19]/70 group-hover:text-[#4b2e19] transition-colors">
-                                                {item.icon}
-                                            </span>
-                                            <span className="text-[15px] font-medium text-[#2D2D2D] group-hover:text-[#4b2e19] transition-colors">
-                                                {item.label}
-                                            </span>
-                                        </div>
-                                        <svg
-                                            className={`w-4 h-4 text-[#999] transition-transform duration-200 ${isShopOpen ? 'rotate-90' : ''}`}
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-                                        </svg>
-                                    </button>
-
-                                    {/* Sub-items */}
-                                    <div className={`overflow-hidden transition-all duration-300 ${isShopOpen ? 'max-h-40' : 'max-h-0'}`}>
-                                        {item.subItems.map((sub, sIdx) => (
-                                            <Link
-                                                key={sIdx}
-                                                href={sub.href}
-                                                onClick={() => { setIsMobileMenuOpen(false); setIsShopOpen(false); }}
-                                                className="flex items-center gap-4 pl-14 pr-5 py-3.5 border-b border-gray-100 bg-[#fdf7f2] hover:bg-[#f5ede3] transition-colors duration-150 group"
-                                            >
-                                                <span className="text-[#4b2e19]/60 group-hover:text-[#4b2e19] transition-colors">
-                                                    {sub.icon}
-                                                </span>
-                                                <span className="text-[14px] font-medium text-[#4b2e19]/80 group-hover:text-[#4b2e19] transition-colors">
-                                                    {sub.label}
-                                                </span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
-                            )
-                        }
-
-                        // Regular item
-                        return (
+                    {menuCategories.map((item, idx) => (
                             <Link
                                 key={idx}
-                                href={item.href!}
+                                href={item.href}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white hover:bg-[#fdf7f2] transition-colors duration-150 group"
                             >
@@ -431,8 +382,7 @@ export default function TopBar() {
                                     </svg>
                                 )}
                             </Link>
-                        )
-                    })}
+                    ))}
                 </nav>
 
                 {/* Footer: Log in + Social */}
