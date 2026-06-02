@@ -7,6 +7,7 @@ import CouponApplyBlock from "@/components/CouponApplyBlock";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
 import { isAuthFailure, messageFromError, parseApiErrorMessage } from "@/lib/authSession";
+import { ApiAuthError } from "@/lib/apiAuthError";
 import {
   YGF_CHECKOUT_CONTACT_KEY,
   dispatchPixelContactUpdated,
@@ -14,6 +15,11 @@ import {
 import { trackBeginCheckout } from "@/lib/gtag";
 import { buildEventProducts, trackCustomerEvent } from "@/lib/customerEvents";
 import { notifyOrderPlaced } from "@/lib/waNotify";
+import { confirmRazorpayOrder, requestRazorpayIntent } from "@/lib/razorpayCheckout";
+import {
+  profileToCheckoutAddress,
+  hasCheckoutAddressData,
+} from "@/lib/userProfile";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -93,7 +99,7 @@ export default function CheckoutPage() {
     discount,
     appliedCoupon,
   } = useCart();
-  const { user, jwt, redirectToLogin } = useAuth();
+  const { user, jwt, redirectToLogin, userProfile, profileRevision, updateUserProfileFromCheckout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const checkoutTrackedRef = useRef(false);
@@ -185,55 +191,22 @@ export default function CheckoutPage() {
   const shipping = 0;
   const finalTotal = Math.max(0, totalPrice + tax + shipping - discount);
 
-  const loadUserAddress = useCallback(async () => {
-    if (!jwt) return;
-
-    try {
-      const response = await fetch(`${BACKEND}/api/users/me`, {
-        headers: { Authorization: `Bearer ${jwt}` }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        if (userData.AddressLine1) {
-          setShippingAddress({
-            fullName: userData.username || '',
-            phone: userData.Phone?.toString() || '',
-            addressLine1: userData.AddressLine1 || '',
-            addressLine2: userData.AddressLine2 || '',
-            city: userData.City || '',
-            state: userData.State || '',
-            pincode: userData.Pin?.toString() || '',
-            landmark: ''
-          });
-        }
-      } else {
-        const message = await parseApiErrorMessage(response, "Failed to load address");
-        if (isAuthFailure(response.status, message)) {
-          redirectToLogin("/checkout");
-        }
-      }
-    } catch (error) {
-      console.error('Error loading user address:', error);
-      const message = messageFromError(error);
-      if (isAuthFailure(undefined, message)) {
-        redirectToLogin("/checkout");
-      }
-    }
-  }, [jwt, redirectToLogin]);
-
   useEffect(() => {
-    // Redirect if cart is empty
     if (items.length === 0) {
       router.push('/cart');
       return;
     }
+  }, [items.length, router]);
 
-    // Load user's saved address if user is logged in
-    if (user && jwt) {
-      loadUserAddress();
+  useEffect(() => {
+    if (!userProfile) return;
+    const fromProfile = profileToCheckoutAddress(userProfile);
+    if (!hasCheckoutAddressData(fromProfile)) return;
+    setShippingAddress(fromProfile);
+    if (useSameAddress) {
+      setBillingAddress(fromProfile);
     }
-  }, [items, user, router, loadUserAddress, jwt]);
+  }, [userProfile, profileRevision, useSameAddress]);
 
   // Meta Pixel advanced matching: sync checkout contact fields for fbq('init')
   useEffect(() => {
@@ -286,13 +259,28 @@ export default function CheckoutPage() {
     return errors;
   };
 
-  const handleAddressSubmit = () => {
+  const handleAddressSubmit = async () => {
     const shippingErrors = validateAddress(shippingAddress);
     const billingErrors = useSameAddress ? [] : validateAddress(billingAddress);
 
     if (shippingErrors.length > 0 || billingErrors.length > 0) {
       alert('Please fix the following errors:\n' + [...shippingErrors, ...billingErrors].join('\n'));
       return;
+    }
+
+    if (user && jwt) {
+      try {
+        await updateUserProfileFromCheckout(shippingAddress);
+      } catch (error) {
+        const status = error instanceof ApiAuthError ? error.status : undefined;
+        const message = messageFromError(error, "Failed to save address to profile");
+        if (isAuthFailure(status, message)) {
+          redirectToLogin("/checkout");
+          return;
+        }
+        alert(message);
+        return;
+      }
     }
 
     setCurrentStep(2);
@@ -332,23 +320,17 @@ export default function CheckoutPage() {
     }
   };
 
-  const createOrder = async () => {
-    if (!jwt) {
-      redirectToLogin("/checkout");
-      return;
-    }
-
-    // Clean phone numbers - ensure only 10 digits are saved (no +91 prefix)
+  const buildOrderPayload = () => {
     const cleanShippingPhone = shippingAddress.phone.replace(/\D/g, '').replace(/^91/, '').slice(0, 10);
     const cleanBillingPhone = useSameAddress
       ? cleanShippingPhone
       : billingAddress.phone.replace(/\D/g, '').replace(/^91/, '').slice(0, 10);
 
-    const orderData = {
+    return {
       items: items,
       shippingAddress: {
         ...shippingAddress,
-        phone: cleanShippingPhone
+        phone: cleanShippingPhone,
       },
       billingAddress: useSameAddress
         ? { ...shippingAddress, phone: cleanShippingPhone }
@@ -360,8 +342,18 @@ export default function CheckoutPage() {
       paymentMethod: paymentMethod,
       notes: orderNotes,
       user: user?.id,
-      coupon: appliedCoupon?.id
+      coupon: appliedCoupon?.id,
+      cleanShippingPhone,
     };
+  };
+
+  const createOrder = async () => {
+    if (!jwt) {
+      redirectToLogin("/checkout");
+      return;
+    }
+
+    const { cleanShippingPhone, ...orderData } = buildOrderPayload();
 
     const response = await fetch(`${BACKEND}/api/orders`, {
       method: 'POST',
@@ -404,104 +396,52 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Clean phone numbers - ensure only 10 digits are saved (no +91 prefix)
-    const cleanShippingPhone = shippingAddress.phone.replace(/\D/g, '').replace(/^91/, '').slice(0, 10);
-    const cleanBillingPhone = useSameAddress
-      ? cleanShippingPhone
-      : billingAddress.phone.replace(/\D/g, '').replace(/^91/, '').slice(0, 10);
+    const { cleanShippingPhone, ...orderData } = buildOrderPayload();
 
-    // Create order first
-    const orderData = {
-      items: items,
-      shippingAddress: {
-        ...shippingAddress,
-        phone: cleanShippingPhone
-      },
-      billingAddress: useSameAddress
-        ? { ...shippingAddress, phone: cleanShippingPhone }
-        : { ...billingAddress, phone: cleanBillingPhone },
-      subtotal: totalPrice,
-      tax: tax,
-      shipping: shipping,
-      total: finalTotal,
-      paymentMethod: paymentMethod,
-      notes: orderNotes,
-      user: user?.id,
-      coupon: appliedCoupon?.id
-    };
-
-    const response = await fetch(`${BACKEND}/api/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwt}`
-      },
-      body: JSON.stringify({ data: orderData })
-    });
-
-    if (!response.ok) {
-      const message = await parseApiErrorMessage(response, "Failed to create order");
-      if (isAuthFailure(response.status, message)) {
+    const intentResult = await requestRazorpayIntent(jwt, orderData as Record<string, unknown>);
+    if (!intentResult.ok) {
+      if (isAuthFailure(intentResult.status, intentResult.message)) {
         redirectToLogin("/checkout");
         return;
       }
-      throw new Error(message);
+      throw new Error(intentResult.message);
     }
 
-    const order = await response.json();
+    const intent = intentResult.intent;
 
-    notifyOrderPlaced({
-      strapiOrderId: order.data.id,
-      orderNumber: order.data.orderNumber,
-      total: finalTotal,
-      phone: cleanShippingPhone,
-      userId: user?.id,
-      customerName: shippingAddress.fullName,
-      items,
-    });
-
-    // Check if Razorpay is properly configured on frontend
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID === 'your_razorpay_key_id_here') {
       alert('Razorpay is not configured on the frontend. Please contact support.');
       return;
     }
 
-    // Check if we have a valid Razorpay order ID from backend
-    if (!order.data.razorpayOrderId) {
+    if (!intent.razorpayOrderId) {
       alert('Razorpay order creation failed. Please try again or use COD.');
       return;
     }
 
-    // Check if Razorpay script is loaded
     if (typeof window === 'undefined' || !window.Razorpay) {
       alert('Razorpay payment gateway is not loaded. Please refresh the page and try again.');
       return;
     }
 
-    // Initialize Razorpay payment
     const options = {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount: Math.round(finalTotal * 100), // Amount in paise, rounded to integer
-      currency: 'INR',
+      amount: intent.amount ?? Math.round(finalTotal * 100),
+      currency: intent.currency ?? 'INR',
       name: 'YugaFarms',
-      description: `Order #${order.data.orderNumber}`,
-      order_id: order.data.razorpayOrderId,
+      description: 'YugaFarms order',
+      order_id: intent.razorpayOrderId,
       handler: async function (response: RazorpayPaymentResponse) {
-        // Payment successful
-        await handlePaymentSuccess(order.data.id, response);
+        await handlePaymentSuccess(orderData, cleanShippingPhone, response);
       },
       prefill: {
         name: shippingAddress.fullName,
         email: user?.email,
         contact: shippingAddress.phone,
       },
-      notes: {
-        order_id: order.data.id,
-        order_number: order.data.orderNumber
-      },
       theme: {
-        color: '#4b2e19'
-      }
+        color: '#4b2e19',
+      },
     };
 
     try {
@@ -519,27 +459,21 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePaymentSuccess = async (orderId: number, paymentResponse: RazorpayPaymentResponse) => {
+  const handlePaymentSuccess = async (
+    orderData: Record<string, unknown>,
+    cleanShippingPhone: string,
+    paymentResponse: RazorpayPaymentResponse
+  ) => {
     try {
       if (!jwt) {
         redirectToLogin("/checkout");
         return;
       }
 
-      const response = await fetch(`${BACKEND}/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwt}`
-        },
-        body: JSON.stringify({
-          data: {
-            paymentStatus: 'PAID',
-            razorpayPaymentId: paymentResponse.razorpay_payment_id,
-            razorpayOrderId: paymentResponse.razorpay_order_id,
-            razorpaySignature: paymentResponse.razorpay_signature
-          }
-        })
+      const response = await confirmRazorpayOrder(jwt, orderData, {
+        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+        razorpay_order_id: paymentResponse.razorpay_order_id,
+        razorpay_signature: paymentResponse.razorpay_signature,
       });
 
       if (!response.ok) {
@@ -551,14 +485,25 @@ export default function CheckoutPage() {
         throw new Error(message);
       }
 
-      // Clear cart and redirect to success page
+      const order = await response.json();
+
+      notifyOrderPlaced({
+        strapiOrderId: order.data.id,
+        orderNumber: order.data.orderNumber,
+        total: finalTotal,
+        phone: cleanShippingPhone,
+        userId: user?.id,
+        customerName: shippingAddress.fullName,
+        items,
+      });
+
       await clearCart();
-      router.push(`/order-success/${orderId}`);
+      router.push(`/order-success/${order.data.id}`);
     } catch (error) {
       console.error('Payment confirmation error:', error);
       const message = messageFromError(
         error,
-        "Payment confirmation failed. Please contact support."
+        "Payment confirmation failed. Please contact support with your payment reference."
       );
       if (isAuthFailure(undefined, message)) {
         redirectToLogin("/checkout");

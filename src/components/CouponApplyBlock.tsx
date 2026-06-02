@@ -40,7 +40,7 @@ export default function CouponApplyBlock({
       {!isDrawer && (
         <p className="text-xs text-[#2D2D2D]/70 mb-3">
           {variant === "checkout"
-            ? "Enter your code below or tap a suggested coupon."
+            ? "Enter your coupon code below."
             : "Apply a code — it stays saved for checkout."}
         </p>
       )}
@@ -50,7 +50,7 @@ export default function CouponApplyBlock({
           type="text"
           value={couponCode}
           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-          placeholder="e.g. NEW5"
+          placeholder="Coupon code"
           disabled={couponVerifying}
           className={`flex-1 border border-[#4b2e19]/20 rounded-md focus:outline-none focus:ring-2 focus:ring-[#f5d26a]/50 disabled:opacity-60 ${
             isDrawer
@@ -69,27 +69,17 @@ export default function CouponApplyBlock({
           {couponVerifying ? "…" : "Apply"}
         </button>
       </div>
-      <div className={`flex flex-wrap items-center ${isDrawer ? "gap-1.5 mt-1.5" : "gap-2 mt-3"}`}>
-        <button
-          type="button"
-          onClick={() => verifyCoupon("NEW5")}
-          disabled={couponVerifying || totalPrice <= 0}
-          className={`font-semibold rounded-full border border-[#4b2e19]/20 bg-[#f5d26a]/20 text-[#4b2e19] hover:bg-[#f5d26a]/35 transition-colors disabled:opacity-50 ${
-            isDrawer ? "text-[10px] px-2 py-0.5" : "text-xs px-3 py-1.5"
-          }`}
-        >
-          Use NEW5
-        </button>
-        {appliedCoupon && discount > 0 && (
+      {appliedCoupon && discount > 0 && (
+        <div className={isDrawer ? "mt-1.5" : "mt-3"}>
           <button
             type="button"
             onClick={removeCoupon}
             className={`font-medium text-red-600 hover:text-red-800 ${isDrawer ? "text-[10px]" : "text-xs"}`}
           >
-            Remove
+            Remove coupon
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {couponError && (
         <p className={`text-red-500 ${isDrawer ? "text-[10px] mt-1 leading-tight" : "text-xs mt-2"}`}>{couponError}</p>
       )}

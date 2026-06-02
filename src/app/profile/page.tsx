@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { parseApiErrorMessage, messageFromError } from "@/lib/authSession";
+import { messageFromError } from "@/lib/authSession";
+import { ApiAuthError } from "@/lib/apiAuthError";
+import { profileFormToStrapiPayload } from "@/lib/userProfile";
 import Footer from "@/components/Footer";
 import TopBar from "@/components/TopBar";
 
@@ -15,10 +17,8 @@ type Address = {
   Pin: number | string;
 };
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
-
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, userProfile, profileRevision, profileReady, updateUserProfile } = useAuth();
   const { jwt, isLoading, isAuthed, handleAuthFailure } = useRequireAuth("/profile");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,39 +36,18 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (!isAuthed) return;
-
-    const load = async () => {
-      setError(null);
-      try {
-        const res = await fetch(`${BACKEND}/api/users/me`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
-        if (!res.ok) {
-          const message = await parseApiErrorMessage(res, "Failed to load profile");
-          if (handleAuthFailure(res.status, message)) return;
-          throw new Error(message);
-        }
-        const me = await res.json();
-        console.log("Profile data loaded:", me);
-        setUsername(me.username || "");
-        setEmail(me.email || "");
-        setPhone(me.Phone != null ? String(me.Phone) : "");
-        setAddress({
-          AddressLine1: me.AddressLine1 || "",
-          AddressLine2: me.AddressLine2 || "",
-          City: me.City || "",
-          State: me.State || "Maharashtra",
-          Pin: me.Pin || "",
-        });
-      } catch (e) {
-        const message = messageFromError(e, "Failed to load");
-        if (handleAuthFailure(undefined, message)) return;
-        setError(message);
-      }
-    };
-    void load();
-  }, [jwt, isAuthed, handleAuthFailure]);
+    if (!isAuthed || !userProfile) return;
+    setUsername(userProfile.username || "");
+    setEmail(userProfile.email || "");
+    setPhone(userProfile.phone || "");
+    setAddress({
+      AddressLine1: userProfile.addressLine1 || "",
+      AddressLine2: userProfile.addressLine2 || "",
+      City: userProfile.city || "",
+      State: (userProfile.state || "Maharashtra") as Address["State"],
+      Pin: userProfile.pin || "",
+    });
+  }, [isAuthed, userProfile, profileRevision]);
 
   const stateOptions = useMemo(
     () => [
@@ -88,71 +67,47 @@ export default function ProfilePage() {
     setError(null);
     setSuccess(null);
     try {
-      // Prepare the complete payload with all fields
-      const payload: Record<string, string | number> = {};
-      if (username?.trim()) payload.username = username.trim();
-      if (email?.trim()) payload.email = email.trim();
-      // Phone number cannot be changed - don't include it in payload
-      
-      // Add address fields directly to the payload
-      if (address.AddressLine1?.trim()) payload.AddressLine1 = address.AddressLine1.trim();
-      if (address.AddressLine2?.trim()) payload.AddressLine2 = address.AddressLine2.trim();
-      if (address.City?.trim()) payload.City = address.City.trim();
-      if (address.State) payload.State = address.State;
-      if (address.Pin && String(address.Pin).replace(/[^0-9]/g, "").length >= 4) {
-        payload.Pin = Number(String(address.Pin).replace(/[^0-9]/g, ""));
-      }
-
-      const res = await fetch(`${BACKEND}/api/users/${user.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify(payload),
+      const payload = profileFormToStrapiPayload({
+        username,
+        email,
+        addressLine1: address.AddressLine1,
+        addressLine2: address.AddressLine2,
+        city: address.City,
+        state: address.State,
+        pin: address.Pin,
       });
-      
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const message = err?.error?.message || "Failed to save profile";
-        if (handleAuthFailure(res.status, message)) return;
-        throw new Error(message);
-      }
 
-
+      await updateUserProfile(payload);
       setSuccess("Profile updated");
-      await refreshUser();
-
-      // Reload the profile data to get updated address and email
-      const reloadRes = await fetch(`${BACKEND}/api/users/me`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
-      if (reloadRes.ok) {
-        const updatedUser = await reloadRes.json();
-        setEmail(updatedUser.email || "");
-        setAddress({
-          AddressLine1: updatedUser.AddressLine1 || "",
-          AddressLine2: updatedUser.AddressLine2 || "",
-          City: updatedUser.City || "",
-          State: updatedUser.State || "Maharashtra",
-          Pin: updatedUser.Pin || "",
-        });
-      }
     } catch (e) {
+      const status = e instanceof ApiAuthError ? e.status : undefined;
       const message = messageFromError(e, "Save failed");
-      if (handleAuthFailure(undefined, message)) return;
+      if (handleAuthFailure(status, message)) return;
       setError(message);
     } finally {
       setSaving(false);
     }
   };
 
-  if (isLoading || !jwt) {
+  if (isLoading || !jwt || (isAuthed && !profileReady)) {
     return (
       <>
         <TopBar />
         <div className="min-h-[70vh] bg-[#fdf7f2] flex items-center justify-center px-4">
           <p className="text-[#4b2e19]">Loading...</p>
+        </div>
+      </>
+    );
+  }
+
+  if (isAuthed && profileReady && !userProfile) {
+    return (
+      <>
+        <TopBar />
+        <div className="min-h-[70vh] bg-[#fdf7f2] flex items-center justify-center px-4">
+          <p className="text-[#4b2e19] text-center">
+            Could not load your profile. Please sign in again.
+          </p>
         </div>
       </>
     );

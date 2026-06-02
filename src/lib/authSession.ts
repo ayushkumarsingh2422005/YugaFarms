@@ -1,16 +1,33 @@
-/** Detect Strapi/JWT auth failures that should send the user back to login. */
+/**
+ * True only when the session is actually invalid (expired/missing JWT).
+ * Do not treat 403 policy/validation errors or generic "Forbidden" as logout.
+ */
 export function isAuthFailure(status?: number, message?: string): boolean {
-  if (status === 401 || status === 403) return true;
+  if (status === 401) return true;
   const m = (message || "").toLowerCase();
-  return (
+  if (
     m.includes("invalid credentials") ||
-    m.includes("unauthorized") ||
-    m.includes("forbidden") ||
-    m.includes("jwt") ||
-    m.includes("must be logged in") ||
-    (m.includes("token") &&
-      (m.includes("expired") || m.includes("invalid") || m.includes("missing")))
-  );
+    m.includes("missing or invalid credentials") ||
+    m.includes("invalid token") ||
+    m.includes("token expired") ||
+    m.includes("jwt expired") ||
+    m.includes("no authorization") ||
+    /\bjwt\b.*\b(expired|invalid|missing)\b/.test(m) ||
+    /\b(expired|invalid|missing)\b.*\bjwt\b/.test(m)
+  ) {
+    return true;
+  }
+  // 403 only when message clearly indicates auth, not Strapi policy/field errors
+  if (status === 403) {
+    return (
+      m.includes("invalid token") ||
+      m.includes("token expired") ||
+      m.includes("missing or invalid credentials") ||
+      m.includes("not authenticated") ||
+      m.includes("not authorized to access")
+    );
+  }
+  return false;
 }
 
 export function loginPath(returnTo?: string): string {

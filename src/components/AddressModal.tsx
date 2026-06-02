@@ -17,6 +17,7 @@ type AddressModalProps = {
   onClose: () => void;
   onSave: (address: Address) => Promise<void>;
   initialPhone?: string;
+  initialAddress?: Partial<Address>;
 };
 
 const INDIAN_STATES = [
@@ -27,30 +28,49 @@ const INDIAN_STATES = [
   "Uttarakhand", "West Bengal"
 ];
 
-export default function AddressModal({ isOpen, onClose, onSave, initialPhone = "" }: AddressModalProps) {
-  // Clean phone number - remove +91 prefix and non-digits, keep only 10 digits
-  const cleanPhone = initialPhone ? initialPhone.replace(/\D/g, '').replace(/^91/, '').slice(0, 10) : "";
+function buildInitialAddress(
+  cleanPhone: string,
+  initialAddress?: Partial<Address>
+): Address {
+  const phone =
+    cleanPhone ||
+    (initialAddress?.phone
+      ? initialAddress.phone.replace(/\D/g, "").replace(/^91/, "").slice(0, 10)
+      : "");
+  return {
+    fullName: initialAddress?.fullName || "",
+    phone,
+    addressLine1: initialAddress?.addressLine1 || "",
+    addressLine2: initialAddress?.addressLine2 || "",
+    city: initialAddress?.city || "",
+    state: initialAddress?.state || "Maharashtra",
+    pincode: initialAddress?.pincode || "",
+    landmark: initialAddress?.landmark || "",
+  };
+}
+
+export default function AddressModal({
+  isOpen,
+  onClose,
+  onSave,
+  initialPhone = "",
+  initialAddress,
+}: AddressModalProps) {
+  const cleanPhone = initialPhone
+    ? initialPhone.replace(/\D/g, "").replace(/^91/, "").slice(0, 10)
+    : "";
   const isPhoneLocked = !!cleanPhone;
 
-  const [address, setAddress] = useState<Address>({
-    fullName: "",
-    phone: cleanPhone,
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "Maharashtra",
-    pincode: "",
-    landmark: "",
-  });
+  const [address, setAddress] = useState<Address>(() =>
+    buildInitialAddress(cleanPhone, initialAddress)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Update address state when initialPhone changes
   React.useEffect(() => {
-    if (cleanPhone && isOpen) {
-      setAddress((prev) => ({ ...prev, phone: cleanPhone }));
-    }
-  }, [cleanPhone, isOpen]);
+    if (!isOpen) return;
+    setAddress(buildInitialAddress(cleanPhone, initialAddress));
+  }, [isOpen, cleanPhone, initialAddress?.fullName, initialAddress?.phone, initialAddress?.addressLine1, initialAddress?.city, initialAddress?.state, initialAddress?.pincode]);
 
   const updateAddress = (field: keyof Address, value: string) => {
     // Don't allow phone to be changed if it's locked
@@ -105,16 +125,7 @@ export default function AddressModal({ isOpen, onClose, onSave, initialPhone = "
   };
 
   const handleClose = () => {
-    setAddress({
-      fullName: "",
-      phone: cleanPhone,
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "Maharashtra",
-      pincode: "",
-      landmark: "",
-    });
+    setAddress(buildInitialAddress(cleanPhone, initialAddress));
     setError(null);
     onClose();
   };

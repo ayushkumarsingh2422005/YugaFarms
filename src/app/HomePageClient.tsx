@@ -10,6 +10,7 @@ import { productDetailPath } from "@/lib/productSlug";
 import type { BannerMedia, Client, Product, ProductVariant } from "@/lib/strapiPublic";
 import { seoBannerImageAlt } from "@/lib/seo";
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
+import InstagramSpotlight from "@/components/InstagramSpotlight";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -520,9 +521,11 @@ export default function HomePageClient({
         </div>
       </section>
 
+      <InstagramSpotlight />
+
       {/* Client Reviews */}
       <section className="bg-[#f5f5f5] py-14 md:py-20">
-        <div className="container mx-auto max-w-6xl px-4 md:px-6">
+        <div className="container mx-auto px-4">
           <h2 className="mb-10 text-center text-2xl font-bold text-[#1e293b] md:mb-12 md:text-[32px]">
             What Do Our Customers Say
           </h2>

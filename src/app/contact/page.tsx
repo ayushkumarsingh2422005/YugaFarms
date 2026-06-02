@@ -25,7 +25,7 @@ const inputClass =
   "w-full rounded-lg border border-[#e8e4dc] bg-white px-3.5 py-2.5 text-[15px] text-[#2D2D2D] placeholder:text-[#4b2e19]/35 focus:outline-none focus:ring-2 focus:ring-[#f5d26a]/40 focus:border-[#f5d26a] transition-shadow";
 
 export default function ContactPage() {
-  const { user, jwt, redirectToLogin } = useAuth();
+  const { user, jwt, userProfile, profileRevision, redirectToLogin } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,40 +39,19 @@ export default function ContactPage() {
   const [isLoadingUser, setIsLoadingUser] = useState(false);
 
   useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (user && jwt) {
-        try {
-          setIsLoadingUser(true);
-          const response = await fetch(`${BACKEND}/api/users/me`, {
-            headers: {
-              'Authorization': `Bearer ${jwt}`
-            }
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            setFormData(prev => ({
-              ...prev,
-              name: userData.username || prev.name,
-              email: userData.email || prev.email,
-              phone: userData.Phone || prev.phone,
-            }));
-          } else {
-            const message = await parseApiErrorMessage(response, "Failed to load profile");
-            if (isAuthFailure(response.status, message)) {
-              redirectToLogin("/contact");
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching user details:', error);
-        } finally {
-          setIsLoadingUser(false);
-        }
-      }
-    };
-
-    fetchUserDetails();
-  }, [user, jwt]);
+    if (!user || !userProfile) {
+      setIsLoadingUser(false);
+      return;
+    }
+    setIsLoadingUser(true);
+    setFormData((prev) => ({
+      ...prev,
+      name: userProfile.username || prev.name,
+      email: userProfile.email || prev.email,
+      phone: userProfile.phone || prev.phone,
+    }));
+    setIsLoadingUser(false);
+  }, [user, userProfile, profileRevision]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -140,45 +119,21 @@ export default function ContactPage() {
 
       setSubmitStatus('success');
       
-      if (user && jwt) {
-        try {
-          const userResponse = await fetch(`${BACKEND}/api/users/me`, {
-            headers: { 'Authorization': `Bearer ${jwt}` }
-          });
-          if (userResponse.ok) {
-            const userData = await userResponse.json();
-            setFormData({
-              name: userData.username || '',
-              email: userData.email || '',
-              phone: userData.Phone || '',
-              subject: '',
-              message: ''
-            });
-          } else {
-            setFormData({
-              name: '',
-              email: '',
-              phone: '',
-              subject: '',
-              message: ''
-            });
-          }
-        } catch {
-          setFormData({
-            name: '',
-            email: '',
-            phone: '',
-            subject: '',
-            message: ''
-          });
-        }
+      if (user && userProfile) {
+        setFormData({
+          name: userProfile.username || '',
+          email: userProfile.email || '',
+          phone: userProfile.phone || '',
+          subject: '',
+          message: '',
+        });
       } else {
         setFormData({
           name: '',
           email: '',
           phone: '',
           subject: '',
-          message: ''
+          message: '',
         });
       }
     } catch (error) {

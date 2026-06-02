@@ -11,6 +11,7 @@ import {
   trackRemoveFromCart,
 } from "@/lib/gtag";
 import { notifyCartSync } from "@/lib/waNotify";
+import { profileToCheckoutAddress } from "@/lib/userProfile";
 
 export type CartItem = {
   productId: number;
@@ -62,7 +63,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const { user, jwt, refreshUser, redirectToLogin } = useAuth();
+  const { user, jwt, userProfile, profileRevision, updateUserProfileFromCheckout, redirectToLogin } = useAuth();
   const isSyncingRef = useRef<boolean>(false);
   const skipCouponPersistRef = useRef(true);
 
@@ -71,6 +72,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [pendingCartItem, setPendingCartItem] = useState<Omit<CartItem, 'quantity'> | null>(null);
   const [userPhone, setUserPhone] = useState<string>("");
+
+  useEffect(() => {
+    if (userProfile?.phone) {
+      setUserPhone(userProfile.phone);
+    }
+  }, [userProfile?.phone]);
 
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -324,28 +331,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, jwt, redirectToLogin]);
 
-  const checkUserAddress = useCallback(async (): Promise<boolean> => {
-    if (!jwt) return false;
-
-    try {
-      const response = await fetch(`${BACKEND}/api/users/me`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        return !!(userData.AddressLine1 && userData.City && userData.State && userData.Pin);
-      }
-      const message = await parseApiErrorMessage(response, "Failed to check address");
-      if (isAuthFailure(response.status, message)) {
-        redirectToLogin("/checkout");
-        return false;
-      }
-    } catch (error) {
-      console.error("Error checking user address:", error);
-    }
-    return false;
-  }, [jwt, redirectToLogin]);
+  const checkUserAddress = useCallback((): boolean => {
+    if (!userProfile) return false;
+    return !!(
+      userProfile.addressLine1 &&
+      userProfile.city &&
+      userProfile.state &&
+      userProfile.pin
+    );
+  }, [userProfile]);
 
   const saveAddressToBackend = useCallback(async (address: {
     fullName: string;
@@ -358,42 +352,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     landmark?: string;
   }) => {
     if (!user || !jwt) return;
-
-    try {
-      const payload: Record<string, string | number> = {
-        username: address.fullName,
-        Phone: address.phone.replace(/\D/g, ''),
-        AddressLine1: address.addressLine1,
-        AddressLine2: address.addressLine2 || "",
-        City: address.city,
-        State: address.state,
-        Pin: parseInt(address.pincode),
-      };
-
-      const response = await fetch(`${BACKEND}/api/users/${user.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const message = await parseApiErrorMessage(response, "Failed to save address");
-        if (isAuthFailure(response.status, message)) {
-          redirectToLogin("/checkout");
-          return;
-        }
-        throw new Error(message);
-      }
-
-      await refreshUser();
-    } catch (error) {
-      console.error("Error saving address:", error);
-      throw error;
-    }
-  }, [user, jwt, refreshUser, redirectToLogin]);
+    await updateUserProfileFromCheckout(address);
+  }, [user, jwt, updateUserProfileFromCheckout]);
 
   const addToCartDirectly = useCallback(
     async (
@@ -580,6 +540,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, jwt, saveCartToBackend, removeCoupon]);
 
+  const modalInitialAddress = useMemo(
+    () => (userProfile ? profileToCheckoutAddress(userProfile) : undefined),
+    [userProfile, profileRevision]
+  );
+
   const handleAddressSave = useCallback(async (address: {
     fullName: string;
     phone: string;
@@ -668,6 +633,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }}
         onSave={handleAddressSave}
         initialPhone={userPhone}
+        initialAddress={modalInitialAddress}
       />
     </CartContext.Provider>
   );
