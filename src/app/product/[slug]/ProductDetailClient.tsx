@@ -496,7 +496,21 @@ export default function ProductDetailClient({
   const emoji = getProductEmoji(product.Title, product.Type);
   const itemInCart = isItemInCart();
   const cartQuantity = getCartItemQuantity();
-  const ctaAttentionClass = "cta-wiggle";
+  const cartIcon = (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2.25}
+        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+      />
+    </svg>
+  );
+  const buyNowIcon = (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+    </svg>
+  );
   const ratedComments = comments.filter((c) => typeof c.Rating === "number");
   const averageRating = ratingCount > 0 ? ratingAvg : product.Rating;
   const ratingBreakdown = [5, 4, 3, 2, 1].map((star) => {
@@ -707,18 +721,30 @@ export default function ProductDetailClient({
                     ) : (
                       <>
                         <button
-                          className={`flex-1 bg-[#4b2e19] text-white py-3.5 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ctaAttentionClass}`}
+                          type="button"
+                          className="btn-atc flex-1 rounded-full py-3.5 text-sm md:text-base"
                           onClick={handleAddToCart}
                           disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                         >
-                          {cartLoading ? 'Adding...' : 'Add to Cart'}
+                          {cartLoading ? "Adding..." : (
+                            <>
+                              {cartIcon}
+                              <span>Add to Cart</span>
+                            </>
+                          )}
                         </button>
                         <button
-                          className={`flex-1 bg-[#f5d26a] text-[#4b2e19] py-3.5 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ctaAttentionClass}`}
+                          type="button"
+                          className="btn-buy-now flex-1 rounded-full py-3.5 text-sm md:text-base"
                           onClick={handleBuyNow}
                           disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                         >
-                          {cartLoading ? 'Processing...' : 'Buy Now'}
+                          {cartLoading ? "Processing..." : (
+                            <>
+                              <span>Buy Now</span>
+                              {buyNowIcon}
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={toggleLike}
@@ -1196,18 +1222,30 @@ export default function ProductDetailClient({
               ) : (
                 <>
                   <button
-                    className={`flex-1 bg-[#4b2e19] text-white py-3 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${ctaAttentionClass}`}
+                    type="button"
+                    className="btn-atc flex-1 rounded-full py-3 text-xs sm:text-sm"
                     onClick={handleAddToCart}
                     disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                   >
-                    {cartLoading ? 'Adding...' : 'Add to Cart'}
+                    {cartLoading ? "Adding..." : (
+                      <>
+                        {cartIcon}
+                        <span>Add to Cart</span>
+                      </>
+                    )}
                   </button>
                   <button
-                    className={`flex-1 bg-[#f5d26a] text-[#4b2e19] py-3 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${ctaAttentionClass}`}
+                    type="button"
+                    className="btn-buy-now flex-1 rounded-full py-3 text-xs sm:text-sm"
                     onClick={handleBuyNow}
                     disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                   >
-                    {cartLoading ? 'Processing...' : 'Buy Now'}
+                    {cartLoading ? "Processing..." : (
+                      <>
+                        <span>Buy Now</span>
+                        {buyNowIcon}
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={toggleLike}
@@ -1229,26 +1267,6 @@ export default function ProductDetailClient({
         {/* Spacer for fixed bottom bar on mobile */}
         <div className="md:hidden h-32"></div>
       </main>
-      <style jsx>{`
-        .cta-wiggle {
-          animation: ctaWiggle 3.2s ease-in-out infinite;
-          transform-origin: center;
-        }
-        .cta-wiggle:hover,
-        .cta-wiggle:focus-visible,
-        .cta-wiggle:disabled {
-          animation-play-state: paused;
-        }
-        @keyframes ctaWiggle {
-          0%, 88%, 100% { transform: rotate(0deg); }
-          90% { transform: rotate(-1.2deg); }
-          94% { transform: rotate(1.2deg); }
-          97% { transform: rotate(-0.8deg); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .cta-wiggle { animation: none; }
-        }
-      `}</style>
       <Footer />
     </>
   );

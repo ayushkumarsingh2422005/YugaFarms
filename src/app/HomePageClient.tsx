@@ -441,7 +441,8 @@ export default function HomePageClient({
 
                           {/* Add to Cart Button */}
                           <button
-                            className="bg-[#2f4f2f] text-white text-[10px] md:text-sm px-2 md:px-5 py-1.5 md:py-2.5 rounded-r-full hover:bg-[#3d6d3d] transition-colors duration-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-md"
+                            type="button"
+                            className="btn-atc btn-atc--compact rounded-r-full px-2 md:px-5 py-1.5 md:py-2.5 text-[10px] md:text-sm whitespace-nowrap"
                             onClick={() => {
                               if (selectedVariant) {
                                 handleAddToCart(product, selectedVariant);
