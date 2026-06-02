@@ -401,7 +401,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           await saveCartToBackend(updatedItems);
         }
 
-        if (options?.openCart !== false) {
+        if (options?.openCart === true) {
           setIsCartOpen(true);
         }
       } catch (error) {
