@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { parseApiErrorMessage, messageFromError } from "@/lib/authSession";
 import Footer from "@/components/Footer";
 import TopBar from "@/components/TopBar";
 
@@ -16,7 +18,8 @@ type Address = {
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
 export default function ProfilePage() {
-  const { user, jwt, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { jwt, isLoading, isAuthed, handleAuthFailure } = useRequireAuth("/profile");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -33,22 +36,18 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
+    if (!isAuthed) return;
+
     const load = async () => {
-      if (!jwt) {
-        console.log("No JWT token available");
-        return;
-      }
       setError(null);
       try {
-        console.log("Loading profile with JWT:", jwt.substring(0, 20) + "...");
         const res = await fetch(`${BACKEND}/api/users/me`, {
           headers: { Authorization: `Bearer ${jwt}` },
         });
-        console.log("Profile API response status:", res.status);
         if (!res.ok) {
-          const errorText = await res.text();
-          console.log("Profile API error response:", errorText);
-          throw new Error(`Failed to load profile: ${res.status} ${errorText}`);
+          const message = await parseApiErrorMessage(res, "Failed to load profile");
+          if (handleAuthFailure(res.status, message)) return;
+          throw new Error(message);
         }
         const me = await res.json();
         console.log("Profile data loaded:", me);
@@ -63,12 +62,13 @@ export default function ProfilePage() {
           Pin: me.Pin || "",
         });
       } catch (e) {
-        console.error("Profile loading error:", e);
-        setError(e instanceof Error ? e.message : "Failed to load");
+        const message = messageFromError(e, "Failed to load");
+        if (handleAuthFailure(undefined, message)) return;
+        setError(message);
       }
     };
-    load();
-  }, [jwt]);
+    void load();
+  }, [jwt, isAuthed, handleAuthFailure]);
 
   const stateOptions = useMemo(
     () => [
@@ -114,7 +114,9 @@ export default function ProfilePage() {
       
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || "Failed to save profile");
+        const message = err?.error?.message || "Failed to save profile";
+        if (handleAuthFailure(res.status, message)) return;
+        throw new Error(message);
       }
 
 
@@ -137,17 +139,22 @@ export default function ProfilePage() {
         });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      const message = messageFromError(e, "Save failed");
+      if (handleAuthFailure(undefined, message)) return;
+      setError(message);
     } finally {
       setSaving(false);
     }
   };
 
-  if (!jwt) {
+  if (isLoading || !jwt) {
     return (
-      <div className="min-h-[70vh] bg-[#fdf7f2] flex items-center justify-center px-4">
-        <div className="bg-white/80 border border-[#2D2D2D]/10 rounded-xl p-6">Please log in to manage your profile.</div>
-      </div>
+      <>
+        <TopBar />
+        <div className="min-h-[70vh] bg-[#fdf7f2] flex items-center justify-center px-4">
+          <p className="text-[#4b2e19]">Loading...</p>
+        </div>
+      </>
     );
   }
 

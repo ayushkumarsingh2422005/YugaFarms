@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { isAuthFailure, parseApiErrorMessage } from "@/lib/authSession";
 import PhoneOTPModal from "@/components/PhoneOTPModal";
 import AddressModal from "@/components/AddressModal";
 import { AppliedCoupon, computeDiscountForSubtotal } from "@/lib/coupon";
@@ -61,7 +62,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const { user, jwt, refreshUser } = useAuth();
+  const { user, jwt, refreshUser, redirectToLogin } = useAuth();
   const isSyncingRef = useRef<boolean>(false);
   const skipCouponPersistRef = useRef(true);
 
@@ -116,6 +117,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
           return mergedCart;
         });
+      } else {
+        const message = await parseApiErrorMessage(response, "Failed to sync cart");
+        if (isAuthFailure(response.status, message)) {
+          redirectToLogin("/cart");
+          return;
+        }
       }
     } catch (error) {
       console.error("Error syncing cart:", error);
@@ -123,7 +130,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       isSyncingRef.current = false;
     }
-  }, [user, jwt]);
+  }, [user, jwt, redirectToLogin]);
   useEffect(() => {
     try {
       const storedCart = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.cart) : null;
@@ -295,7 +302,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save cart to backend");
+        const message = await parseApiErrorMessage(response, "Failed to save cart to backend");
+        if (isAuthFailure(response.status, message)) {
+          redirectToLogin("/cart");
+          return;
+        }
+        throw new Error(message);
       }
 
       const phone = (user as { Phone?: string })?.Phone;
@@ -310,7 +322,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.error("Error saving cart to backend:", error);
       throw error;
     }
-  }, [user, jwt]);
+  }, [user, jwt, redirectToLogin]);
 
   const checkUserAddress = useCallback(async (): Promise<boolean> => {
     if (!jwt) return false;
@@ -324,11 +336,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const userData = await response.json();
         return !!(userData.AddressLine1 && userData.City && userData.State && userData.Pin);
       }
+      const message = await parseApiErrorMessage(response, "Failed to check address");
+      if (isAuthFailure(response.status, message)) {
+        redirectToLogin("/checkout");
+        return false;
+      }
     } catch (error) {
       console.error("Error checking user address:", error);
     }
     return false;
-  }, [jwt]);
+  }, [jwt, redirectToLogin]);
 
   const saveAddressToBackend = useCallback(async (address: {
     fullName: string;
@@ -363,7 +380,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save address");
+        const message = await parseApiErrorMessage(response, "Failed to save address");
+        if (isAuthFailure(response.status, message)) {
+          redirectToLogin("/checkout");
+          return;
+        }
+        throw new Error(message);
       }
 
       await refreshUser();
@@ -371,7 +393,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.error("Error saving address:", error);
       throw error;
     }
-  }, [user, jwt, refreshUser]);
+  }, [user, jwt, refreshUser, redirectToLogin]);
 
   const addToCartDirectly = useCallback(
     async (

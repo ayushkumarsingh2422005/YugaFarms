@@ -5,8 +5,9 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
-import { useAuth } from "@/app/context/AuthContext";
 import { trackPurchase } from "@/lib/gtag";
+import { parseApiErrorMessage, messageFromError } from "@/lib/authSession";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -50,7 +51,9 @@ type Order = {
 
 export default function OrderSuccessPage() {
   const params = useParams();
-  const { jwt } = useAuth();
+  const returnPath =
+    typeof params.id === "string" ? `/order-success/${params.id}` : "/orders";
+  const { jwt, isLoading, isAuthed, handleAuthFailure } = useRequireAuth(returnPath);
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,14 +61,11 @@ export default function OrderSuccessPage() {
 
   useEffect(() => {
     const fetchOrder = async () => {
-      if (!jwt) {
-        setError('You must be logged in to view order details');
-        setLoading(false);
-        return;
-      }
+      if (!jwt) return;
 
       try {
         setLoading(true);
+        setError(null);
         const response = await fetch(`${BACKEND}/api/orders/${params.id}`, {
           headers: {
             'Authorization': `Bearer ${jwt}`
@@ -73,8 +73,9 @@ export default function OrderSuccessPage() {
         });
 
         if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(error?.error?.message || 'Failed to fetch order');
+          const message = await parseApiErrorMessage(response, "Failed to fetch order");
+          if (handleAuthFailure(response.status, message)) return;
+          throw new Error(message);
         }
 
         const data = await response.json();
@@ -103,18 +104,21 @@ export default function OrderSuccessPage() {
         }
       } catch (err) {
         console.error('Error fetching order:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load order');
+        const message = messageFromError(err, "Failed to load order");
+        if (handleAuthFailure(undefined, message)) return;
+        setError(message);
       } finally {
         setLoading(false);
       }
     };
 
+    if (!isAuthed) return;
     if (params.id) {
-      fetchOrder();
+      void fetchOrder();
     }
-  }, [params.id, jwt]);
+  }, [params.id, jwt, isAuthed, handleAuthFailure, returnPath]);
 
-  if (loading) {
+  if (isLoading || loading) {
     return (
       <>
         <TopBar />

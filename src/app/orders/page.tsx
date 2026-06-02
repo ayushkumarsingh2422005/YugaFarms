@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
-import { useAuth } from "@/app/context/AuthContext";
+import { parseApiErrorMessage, messageFromError } from "@/lib/authSession";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
@@ -47,29 +48,23 @@ type Order = {
 };
 
 export default function OrdersPage() {
-  const { jwt } = useAuth();
+  const { jwt, isLoading, isAuthed, handleAuthFailure } = useRequireAuth("/orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (jwt) {
-      fetchOrders();
-    } else {
-      setError('You must be logged in to view your orders');
-      setLoading(false);
-    }
-  }, [jwt]);
+    if (!isAuthed) return;
+    void fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jwt, isAuthed]);
 
   const fetchOrders = async () => {
-    if (!jwt) {
-      setError('You must be logged in to view your orders');
-      setLoading(false);
-      return;
-    }
+    if (!jwt) return;
 
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`${BACKEND}/api/orders`, {
         headers: {
           'Authorization': `Bearer ${jwt}`
@@ -77,15 +72,18 @@ export default function OrdersPage() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || 'Failed to fetch orders');
+        const message = await parseApiErrorMessage(response, "Failed to fetch orders");
+        if (handleAuthFailure(response.status, message)) return;
+        throw new Error(message);
       }
       
       const data = await response.json();
       setOrders(data.data || []);
     } catch (err) {
       console.error('Error fetching orders:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load orders');
+      const message = messageFromError(err, "Failed to load orders");
+      if (handleAuthFailure(undefined, message)) return;
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -147,7 +145,7 @@ export default function OrdersPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading || (loading && !error)) {
     return (
       <>
         <TopBar />

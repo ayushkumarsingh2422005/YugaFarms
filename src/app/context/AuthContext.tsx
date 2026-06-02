@@ -1,5 +1,7 @@
 "use client";
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { loginPath } from "@/lib/authSession";
 
 type AuthUser = {
   id: number;
@@ -18,6 +20,8 @@ type AuthContextType = {
   sendOTP: (phone: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  /** Clear session and navigate to login (optional return path after login). */
+  redirectToLogin: (returnTo?: string) => void;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +34,7 @@ const STORAGE_KEYS = {
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [jwt, setJwt] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -150,9 +155,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clear();
   }, [clear]);
 
+  const redirectToLogin = useCallback(
+    (returnTo?: string) => {
+      clear();
+      router.replace(loginPath(returnTo));
+    },
+    [clear, router]
+  );
+
   const value = useMemo<AuthContextType>(() => ({ 
-    user, jwt, isLoading, login, signup, loginWithOTP, sendOTP, logout, refreshUser 
-  }), [user, jwt, isLoading, login, signup, loginWithOTP, sendOTP, logout, refreshUser]);
+    user, jwt, isLoading, login, signup, loginWithOTP, sendOTP, logout, refreshUser, redirectToLogin
+  }), [user, jwt, isLoading, login, signup, loginWithOTP, sendOTP, logout, refreshUser, redirectToLogin]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

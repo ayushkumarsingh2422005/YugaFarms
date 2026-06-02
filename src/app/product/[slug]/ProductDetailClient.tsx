@@ -7,6 +7,8 @@ import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
+import { usePathname } from "next/navigation";
+import { isAuthFailure, parseApiErrorMessage } from "@/lib/authSession";
 import { formatInr } from "@/lib/currency";
 import { trackViewItem } from "@/lib/gtag";
 import SimilarProducts from "@/components/SimilarProducts";
@@ -24,7 +26,8 @@ export default function ProductDetailClient({
   productComments?: ProductComment[];
 }) {
   const router = useRouter();
-  const { user, jwt } = useAuth();
+  const pathname = usePathname();
+  const { user, jwt, redirectToLogin } = useAuth();
   const [product, setProduct] = useState<Product | null>(initialProduct);
   const [comments, setComments] = useState<ProductComment[]>(productComments);
   const [newComment, setNewComment] = useState("");
@@ -131,7 +134,7 @@ export default function ProductDetailClient({
       return;
     }
     if (!jwt) {
-      setCommentStatus("Please login to add a comment.");
+      redirectToLogin(pathname || "/login");
       return;
     }
 
@@ -154,8 +157,12 @@ export default function ProductDetailClient({
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || "Failed to submit comment");
+        const message = await parseApiErrorMessage(res, "Failed to submit comment");
+        if (isAuthFailure(res.status, message)) {
+          redirectToLogin(pathname || "/login");
+          return;
+        }
+        throw new Error(message);
       }
 
       const created = (await res.json()) as { data?: ProductComment };
@@ -198,7 +205,7 @@ export default function ProductDetailClient({
 
   const updateComment = async () => {
     if (!jwt || !editingCommentId) {
-      setCommentStatus("Please login to edit your comment.");
+      redirectToLogin(pathname || "/login");
       return;
     }
     const text = editCommentText.trim();
@@ -224,8 +231,12 @@ export default function ProductDetailClient({
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || "Failed to update comment");
+        const message = await parseApiErrorMessage(res, "Failed to update comment");
+        if (isAuthFailure(res.status, message)) {
+          redirectToLogin(pathname || "/login");
+          return;
+        }
+        throw new Error(message);
       }
 
       const updated = (await res.json()) as { data?: ProductComment };
@@ -252,7 +263,7 @@ export default function ProductDetailClient({
 
   const deleteComment = async (row: ProductComment) => {
     if (!jwt) {
-      setCommentStatus("Please login to delete your comment.");
+      redirectToLogin(pathname || "/login");
       return;
     }
     if (!isCommentOwner(row)) {
@@ -268,8 +279,12 @@ export default function ProductDetailClient({
         headers: { Authorization: `Bearer ${jwt}` },
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || "Failed to delete comment");
+        const message = await parseApiErrorMessage(res, "Failed to delete comment");
+        if (isAuthFailure(res.status, message)) {
+          redirectToLogin(pathname || "/login");
+          return;
+        }
+        throw new Error(message);
       }
 
       setComments((prev) => prev.filter((c) => c.id !== row.id));

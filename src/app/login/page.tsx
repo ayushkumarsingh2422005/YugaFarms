@@ -1,13 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { sendOTP, loginWithOTP, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
+  const afterLoginPath =
+    redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+      ? redirectTo
+      : "/";
+
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -18,9 +25,9 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push("/");
+      router.replace(afterLoginPath);
     }
-  }, [user, router]);
+  }, [user, router, afterLoginPath]);
 
   // Countdown effect
   useEffect(() => {
@@ -71,8 +78,7 @@ export default function LoginPage() {
       const cleanPhone = phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
       await loginWithOTP(fullPhone, otp);
-      // Redirect to home after successful login
-      router.push("/");
+      router.replace(afterLoginPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP. Please try again.");
     } finally {
@@ -206,5 +212,23 @@ export default function LoginPage() {
       </div>
       <Footer />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <TopBar />
+          <div className="min-h-[calc(100vh-200px)] bg-[#fdf7f2] flex items-center justify-center">
+            <p className="text-[#4b2e19]">Loading...</p>
+          </div>
+          <Footer />
+        </>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

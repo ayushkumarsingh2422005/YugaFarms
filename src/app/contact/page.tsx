@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/app/context/AuthContext";
+import { isAuthFailure, parseApiErrorMessage } from "@/lib/authSession";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 const MAPS_APP_URL = "https://maps.app.goo.gl/PaL5kMkERPGg97bJA?g_st=iw";
@@ -24,7 +25,7 @@ const inputClass =
   "w-full rounded-lg border border-[#e8e4dc] bg-white px-3.5 py-2.5 text-[15px] text-[#2D2D2D] placeholder:text-[#4b2e19]/35 focus:outline-none focus:ring-2 focus:ring-[#f5d26a]/40 focus:border-[#f5d26a] transition-shadow";
 
 export default function ContactPage() {
-  const { user, jwt } = useAuth();
+  const { user, jwt, redirectToLogin } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -56,6 +57,11 @@ export default function ContactPage() {
               email: userData.email || prev.email,
               phone: userData.Phone || prev.phone,
             }));
+          } else {
+            const message = await parseApiErrorMessage(response, "Failed to load profile");
+            if (isAuthFailure(response.status, message)) {
+              redirectToLogin("/contact");
+            }
           }
         } catch (error) {
           console.error('Error fetching user details:', error);
@@ -123,8 +129,11 @@ export default function ContactPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMsg = errorData?.error?.message || errorData?.message || 'Failed to submit inquiry';
+        const errorMsg = await parseApiErrorMessage(response, "Failed to submit inquiry");
+        if (jwt && isAuthFailure(response.status, errorMsg)) {
+          redirectToLogin("/contact");
+          return;
+        }
         setErrorMessage(errorMsg);
         throw new Error(errorMsg);
       }

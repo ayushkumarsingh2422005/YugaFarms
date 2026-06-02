@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import CouponApplyBlock from "@/components/CouponApplyBlock";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
+import { isAuthFailure, messageFromError, parseApiErrorMessage } from "@/lib/authSession";
 import {
   YGF_CHECKOUT_CONTACT_KEY,
   dispatchPixelContactUpdated,
@@ -92,7 +93,7 @@ export default function CheckoutPage() {
     discount,
     appliedCoupon,
   } = useCart();
-  const { user, jwt } = useAuth();
+  const { user, jwt, redirectToLogin } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const checkoutTrackedRef = useRef(false);
@@ -206,11 +207,20 @@ export default function CheckoutPage() {
             landmark: ''
           });
         }
+      } else {
+        const message = await parseApiErrorMessage(response, "Failed to load address");
+        if (isAuthFailure(response.status, message)) {
+          redirectToLogin("/checkout");
+        }
       }
     } catch (error) {
       console.error('Error loading user address:', error);
+      const message = messageFromError(error);
+      if (isAuthFailure(undefined, message)) {
+        redirectToLogin("/checkout");
+      }
     }
-  }, [jwt]);
+  }, [jwt, redirectToLogin]);
 
   useEffect(() => {
     // Redirect if cart is empty
@@ -311,7 +321,12 @@ export default function CheckoutPage() {
       }
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Payment failed. Please try again.');
+      const message = messageFromError(error, "Payment failed. Please try again.");
+      if (isAuthFailure(undefined, message)) {
+        redirectToLogin("/checkout");
+        return;
+      }
+      alert(message);
     } finally {
       setIsLoading(false);
     }
@@ -319,7 +334,8 @@ export default function CheckoutPage() {
 
   const createOrder = async () => {
     if (!jwt) {
-      throw new Error('You must be logged in to create an order');
+      redirectToLogin("/checkout");
+      return;
     }
 
     // Clean phone numbers - ensure only 10 digits are saved (no +91 prefix)
@@ -357,8 +373,12 @@ export default function CheckoutPage() {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error?.error?.message || 'Failed to create order');
+      const message = await parseApiErrorMessage(response, "Failed to create order");
+      if (isAuthFailure(response.status, message)) {
+        redirectToLogin("/checkout");
+        return;
+      }
+      throw new Error(message);
     }
 
     const order = await response.json();
@@ -380,7 +400,8 @@ export default function CheckoutPage() {
 
   const initiateRazorpayPayment = async () => {
     if (!jwt) {
-      throw new Error('You must be logged in to create an order');
+      redirectToLogin("/checkout");
+      return;
     }
 
     // Clean phone numbers - ensure only 10 digits are saved (no +91 prefix)
@@ -419,8 +440,12 @@ export default function CheckoutPage() {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error?.error?.message || 'Failed to create order');
+      const message = await parseApiErrorMessage(response, "Failed to create order");
+      if (isAuthFailure(response.status, message)) {
+        redirectToLogin("/checkout");
+        return;
+      }
+      throw new Error(message);
     }
 
     const order = await response.json();
@@ -497,7 +522,8 @@ export default function CheckoutPage() {
   const handlePaymentSuccess = async (orderId: number, paymentResponse: RazorpayPaymentResponse) => {
     try {
       if (!jwt) {
-        throw new Error('You must be logged in to confirm payment');
+        redirectToLogin("/checkout");
+        return;
       }
 
       const response = await fetch(`${BACKEND}/api/orders/${orderId}`, {
@@ -517,8 +543,12 @@ export default function CheckoutPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error?.error?.message || 'Failed to confirm payment');
+        const message = await parseApiErrorMessage(response, "Failed to confirm payment");
+        if (isAuthFailure(response.status, message)) {
+          redirectToLogin("/checkout");
+          return;
+        }
+        throw new Error(message);
       }
 
       // Clear cart and redirect to success page
@@ -526,7 +556,15 @@ export default function CheckoutPage() {
       router.push(`/order-success/${orderId}`);
     } catch (error) {
       console.error('Payment confirmation error:', error);
-      alert(error instanceof Error ? error.message : 'Payment confirmation failed. Please contact support.');
+      const message = messageFromError(
+        error,
+        "Payment confirmation failed. Please contact support."
+      );
+      if (isAuthFailure(undefined, message)) {
+        redirectToLogin("/checkout");
+        return;
+      }
+      alert(message);
     }
   };
 
