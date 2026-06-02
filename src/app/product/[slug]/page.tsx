@@ -6,7 +6,12 @@ import {
   buildProductJsonLd,
   productMetaDescription,
 } from "@/lib/seo";
-import { getProductBySlug, getProductComments, getSimilarProducts } from "@/lib/strapiPublic";
+import {
+  getAllProductsByType,
+  getProductBySlug,
+  getProductComments,
+  getSimilarProducts,
+} from "@/lib/strapiPublic";
 import { productDetailPath } from "@/lib/productSlug";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
@@ -42,6 +47,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const initialProduct = await getProductBySlug(slug);
+  const catalogProducts =
+    initialProduct != null
+      ? await getAllProductsByType(initialProduct.Type)
+      : [];
   const similarProducts =
     initialProduct != null ? await getSimilarProducts(initialProduct) : [];
   const productComments =
@@ -69,6 +78,7 @@ export default async function ProductPage({ params }: Props) {
       {productLd ? <JsonLd data={productLd} /> : null}
       <ProductDetailClient
         initialProduct={initialProduct}
+        catalogProducts={catalogProducts}
         similarProducts={similarProducts}
         productComments={productComments}
       />

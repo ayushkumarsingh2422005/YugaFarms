@@ -1,17 +1,41 @@
 'use client'
-import React from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/app/context/CartContext";
 import { productDetailPath } from "@/lib/productSlug";
-import type { Product, ProductVariant } from "@/lib/strapiPublic";
+import type { Product } from "@/lib/strapiPublic";
+import {
+  buildFamilyDisplayVariants,
+  defaultFamilyVariant,
+  type FamilyDisplayVariant,
+  familyVariantKey,
+  formatVariantUnit,
+} from "@/lib/productFamily";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
 export default function GheePageClient({ products }: { products: Product[] }) {
   const { addToCart, isLoading: cartLoading } = useCart();
+  const [selectedKeys, setSelectedKeys] = useState<Record<number, string>>(() => {
+    const initial: Record<number, string> = {};
+    for (const product of products) {
+      const family = buildFamilyDisplayVariants(products, product);
+      const def = defaultFamilyVariant(family, product);
+      if (def) initial[product.id] = familyVariantKey(def);
+    }
+    return initial;
+  });
+
+  const familyByProductId = useMemo(() => {
+    const map = new Map<number, FamilyDisplayVariant[]>();
+    for (const product of products) {
+      map.set(product.id, buildFamilyDisplayVariants(products, product));
+    }
+    return map;
+  }, [products]);
 
   const getProductEmoji = (title: string) => {
     const titleLower = title.toLowerCase();
@@ -36,29 +60,21 @@ export default function GheePageClient({ products }: { products: Product[] }) {
     return gradients[index % gradients.length];
   };
 
-  const getProductBadge = (variant?: ProductVariant) => {
-    const raw = variant?.Label;
-    return typeof raw === "string" ? raw.trim() : "";
-  };
+  const getProductBadge = (row?: FamilyDisplayVariant) => row?.label ?? "";
 
-  const formatVolume = (ml: number): string => {
-    if (ml >= 1000) {
-      const liters = ml / 1000;
-      // Show 1 decimal place if needed, otherwise show as integer
-      return liters % 1 === 0 ? `${liters} L` : `${liters.toFixed(1)} L`;
-    }
-    return `${ml} ml`;
-  };
-
-  const handleAddToCart = async (product: Product, variant: ProductVariant) => {
+  const handleAddToCart = async (row: FamilyDisplayVariant) => {
+    const product = products.find((p) => p.id === row.productId);
     try {
       await addToCart({
-        productId: product.id,
-        variantId: variant.id,
-        price: variant.Price - (variant.Discount || 0),
-        weight: variant.Weight,
-        productTitle: product.Title,
-        productImage: product.Image && product.Image.length > 0 ? `${BACKEND}${product.Image[0].url}` : undefined,
+        productId: row.productId,
+        variantId: row.variantId,
+        price: row.price - row.discount,
+        weight: row.weight,
+        productTitle: row.productTitle,
+        productImage:
+          product?.Image && product.Image.length > 0
+            ? `${BACKEND}${product.Image[0].url}`
+            : undefined,
       });
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -106,19 +122,25 @@ export default function GheePageClient({ products }: { products: Product[] }) {
               ) : (
                 products.map((product, idx) => {
                   const emoji = getProductEmoji(product.Title);
-                  // Use first variant as default (no variant selection)
-                  const variants = product.Variants || [];
-                  const defaultVariant = variants[0];
-                  const badge = getProductBadge(defaultVariant);
-                  
-                  const finalPrice = defaultVariant ? defaultVariant.Price - (defaultVariant.Discount || 0) : 0;
-                  const originalPrice = defaultVariant ? defaultVariant.Price : 0;
+                  const family = familyByProductId.get(product.id) ?? [];
+                  const selectedKey =
+                    selectedKeys[product.id] ??
+                    (defaultFamilyVariant(family, product)
+                      ? familyVariantKey(defaultFamilyVariant(family, product)!)
+                      : "");
+                  const selected =
+                    family.find((row) => familyVariantKey(row) === selectedKey) ??
+                    family[0];
+                  const badge = getProductBadge(selected);
+                  const finalPrice = selected ? selected.price - selected.discount : 0;
+                  const originalPrice = selected ? selected.price : 0;
                   const savings = originalPrice - finalPrice;
+                  const detailHref = selected?.productPath ?? productDetailPath(product);
 
                   return (
                     <div key={product.id} className="rounded-xl md:rounded-2xl transition-all duration-300 group">
                       {/* Product Image */}
-                      <Link href={productDetailPath(product)} className="block">
+                      <Link href={detailHref} className="block">
                         <div className="relative bg-gradient-to-br from-[#f5d26a]/20 to-[#f5d26a]/10 rounded-t-xl md:rounded-t-2xl border-b border-[#4b2e19]/10 flex items-center justify-center overflow-hidden cursor-pointer aspect-square w-full">
                           {product.Image && product.Image.length > 0 ? (
                             <Image 
@@ -151,17 +173,44 @@ export default function GheePageClient({ products }: { products: Product[] }) {
                       <div className="p-2 md:p-4 space-y-2 md:space-y-3">
                         {/* Title */}
                         <div>
-                          <Link href={productDetailPath(product)} className="block group">
+                          <Link href={detailHref} className="block group">
                             <h3 className="text-xs md:text-base font-bold text-[#2D2D2D] mb-0.5 md:mb-1 group-hover:text-[#4b2e19] transition-colors line-clamp-2 leading-tight">{product.Title}</h3>
                           </Link>
                           <p className="text-[10px] md:text-xs text-[#2D2D2D]/70 font-semibold line-clamp-1 mt-0.5">{product.PunchLine}</p>
                         </div>
 
-                        {/* Weight and Savings Display */}
-                        {defaultVariant && (
+                        {family.length > 1 && (
+                          <select
+                            value={selectedKey}
+                            onChange={(e) =>
+                              setSelectedKeys((prev) => ({
+                                ...prev,
+                                [product.id]: e.target.value,
+                              }))
+                            }
+                            className="w-full border border-[#4b2e19]/20 rounded-lg px-2 py-1.5 text-[10px] md:text-sm text-[#2D2D2D] bg-white focus:outline-none focus:ring-2 focus:ring-[#f5d26a]/50 font-semibold"
+                          >
+                            {family.map((row) => {
+                              const price = row.price - row.discount;
+                              return (
+                                <option
+                                  key={familyVariantKey(row)}
+                                  value={familyVariantKey(row)}
+                                  disabled={row.stock <= 0}
+                                >
+                                  {formatVariantUnit(row.weight, "Ghee")} — ₹
+                                  {price.toLocaleString("en-IN")}
+                                  {row.stock <= 0 ? " (Out of stock)" : ""}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
+
+                        {family.length <= 1 && selected && (
                           <div className="flex items-center justify-between">
                             <span className="text-xs md:text-sm text-[#2D2D2D] font-bold">
-                              {formatVolume(defaultVariant.Weight)}
+                              {formatVariantUnit(selected.weight, "Ghee")}
                             </span>
                             {savings > 0 && (
                               <span className="bg-red-100 text-red-600 px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold">
@@ -181,19 +230,16 @@ export default function GheePageClient({ products }: { products: Product[] }) {
                                   <span className="text-[10px] md:text-sm text-[#2D2D2D]/60 line-through font-semibold">₹{originalPrice.toLocaleString('en-IN')}</span>
                                 )}
                               </div>
-                              {/* <span className="text-[10px] md:text-xs text-[#2D2D2D]/70 font-medium">
-                                {product.NumberOfPurchase}+ bought
-                              </span> */}
                             </div>
                           </div>
                           <button 
                             className="bg-[#2f4f2f] text-white text-[10px] md:text-sm px-2 md:px-5 py-1.5 md:py-2.5 rounded-r-full hover:bg-[#3d6d3d] transition-colors duration-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-md w-2/5 h-full"
                             onClick={() => {
-                              if (defaultVariant) {
-                                handleAddToCart(product, defaultVariant);
+                              if (selected) {
+                                handleAddToCart(selected);
                               }
                             }}
-                            disabled={cartLoading || !defaultVariant || (defaultVariant.Stock <= 0)}
+                            disabled={cartLoading || !selected || selected.stock <= 0}
                           >
                             {cartLoading ? 'Adding...' : <span className="hidden md:inline">ADD TO CART</span>}
                             {!cartLoading && <span className="md:hidden">ADD</span>}

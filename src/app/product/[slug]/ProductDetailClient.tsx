@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -12,16 +12,26 @@ import { isAuthFailure, parseApiErrorMessage } from "@/lib/authSession";
 import { formatInr } from "@/lib/currency";
 import { trackViewItem } from "@/lib/gtag";
 import SimilarProducts from "@/components/SimilarProducts";
-import type { Product, ProductComment, ProductVariant } from "@/lib/strapiPublic";
+import type { Product, ProductComment } from "@/lib/strapiPublic";
+import {
+  buildFamilyDisplayVariants,
+  defaultFamilyVariant,
+  type FamilyDisplayVariant,
+  familyVariantKey,
+  formatVariantUnit,
+  variantSelectLabel,
+} from "@/lib/productFamily";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:1337";
 
 export default function ProductDetailClient({
   initialProduct,
+  catalogProducts = [],
   similarProducts = [],
   productComments = [],
 }: {
   initialProduct: Product | null;
+  catalogProducts?: Product[];
   similarProducts?: Product[];
   productComments?: ProductComment[];
 }) {
@@ -44,9 +54,30 @@ export default function ProductDetailClient({
   const [error, setError] = useState<string | null>(
     initialProduct ? null : "Product not found"
   );
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    initialProduct?.Variants?.length ? initialProduct.Variants[0] : null
+  const [selectedOption, setSelectedOption] = useState<FamilyDisplayVariant | null>(
+    null
   );
+
+  const familyVariants = useMemo(() => {
+    if (!product) return [];
+    return buildFamilyDisplayVariants(catalogProducts, product);
+  }, [product, catalogProducts]);
+
+  const catalogById = useMemo(() => {
+    const map = new Map<number, Product>();
+    for (const p of catalogProducts) map.set(p.id, p);
+    if (product) map.set(product.id, product);
+    return map;
+  }, [catalogProducts, product]);
+
+  const productImageFor = (productId: number) => {
+    const p = catalogById.get(productId);
+    return p?.Image?.[0]?.url
+      ? `${BACKEND}${p.Image[0].url}`
+      : product?.Image?.[0]?.url
+        ? `${BACKEND}${product.Image[0].url}`
+        : undefined;
+  };
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -65,12 +96,29 @@ export default function ProductDetailClient({
     setCommentStatus(null);
     setError(initialProduct ? null : "Product not found");
     setSelectedImageIndex(0);
-    if (initialProduct?.Variants?.length) {
-      setSelectedVariant(initialProduct.Variants[0]);
+    if (initialProduct) {
+      const family = buildFamilyDisplayVariants(catalogProducts, initialProduct);
+      setSelectedOption(defaultFamilyVariant(family, initialProduct));
     } else {
-      setSelectedVariant(null);
+      setSelectedOption(null);
     }
-  }, [initialProduct]);
+  }, [initialProduct, catalogProducts]);
+
+  useEffect(() => {
+    if (!product || familyVariants.length === 0) return;
+    setSelectedOption((prev) => {
+      if (
+        prev &&
+        familyVariants.some(
+          (row) =>
+            row.productId === prev.productId && row.variantId === prev.variantId
+        )
+      ) {
+        return prev;
+      }
+      return defaultFamilyVariant(familyVariants, product);
+    });
+  }, [product, familyVariants]);
 
   useEffect(() => {
     if (!product) return;
@@ -93,16 +141,16 @@ export default function ProductDetailClient({
   }, [product]);
 
   useEffect(() => {
-    if (!product || !selectedVariant) return;
-    const price = selectedVariant.Price - (selectedVariant.Discount || 0);
+    if (!product || !selectedOption) return;
+    const price = selectedOption.price - selectedOption.discount;
     trackViewItem({
-      item_id: `${product.id}_${selectedVariant.id}`,
-      item_name: product.Title,
-      item_variant: String(selectedVariant.Weight),
+      item_id: `${selectedOption.productId}_${selectedOption.variantId}`,
+      item_name: selectedOption.productTitle,
+      item_variant: String(selectedOption.weight),
       price,
       quantity: 1,
     });
-  }, [product, selectedVariant]);
+  }, [product, selectedOption]);
 
   useEffect(() => {
     const loadComments = async () => {
@@ -324,17 +372,24 @@ export default function ProductDetailClient({
     localStorage.setItem('likedProducts', JSON.stringify(likedProducts));
   };
 
+  const handleSelectFamilyVariant = (row: FamilyDisplayVariant) => {
+    setSelectedOption(row);
+    if (product && row.productId !== product.id) {
+      router.replace(row.productPath, { scroll: false });
+    }
+  };
+
   const handleAddToCart = async () => {
-    if (!product || !selectedVariant) return;
+    if (!selectedOption) return;
 
     try {
       await addToCart({
-        productId: product.id,
-        variantId: selectedVariant.id,
-        price: selectedVariant.Price - (selectedVariant.Discount || 0),
-        weight: selectedVariant.Weight,
-        productTitle: product.Title,
-        productImage: product.Image && product.Image.length > 0 ? `${BACKEND}${product.Image[0].url}` : undefined,
+        productId: selectedOption.productId,
+        variantId: selectedOption.variantId,
+        price: selectedOption.price - selectedOption.discount,
+        weight: selectedOption.weight,
+        productTitle: selectedOption.productTitle,
+        productImage: productImageFor(selectedOption.productId),
       });
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -342,18 +397,18 @@ export default function ProductDetailClient({
   };
 
   const handleBuyNow = async () => {
-    if (!product || !selectedVariant) return;
+    if (!selectedOption) return;
 
     try {
       setIsCartOpen(false);
       await addToCart(
         {
-          productId: product.id,
-          variantId: selectedVariant.id,
-          price: selectedVariant.Price - (selectedVariant.Discount || 0),
-          weight: selectedVariant.Weight,
-          productTitle: product.Title,
-          productImage: product.Image && product.Image.length > 0 ? `${BACKEND}${product.Image[0].url}` : undefined,
+          productId: selectedOption.productId,
+          variantId: selectedOption.variantId,
+          price: selectedOption.price - selectedOption.discount,
+          weight: selectedOption.weight,
+          productTitle: selectedOption.productTitle,
+          productImage: productImageFor(selectedOption.productId),
         },
         { openCart: false }
       );
@@ -365,13 +420,21 @@ export default function ProductDetailClient({
   };
 
   const isItemInCart = () => {
-    if (!product || !selectedVariant) return false;
-    return cartItems.some(item => item.productId === product.id && item.variantId === selectedVariant.id);
+    if (!selectedOption) return false;
+    return cartItems.some(
+      (item) =>
+        item.productId === selectedOption.productId &&
+        item.variantId === selectedOption.variantId
+    );
   };
 
   const getCartItemQuantity = () => {
-    if (!product || !selectedVariant) return 0;
-    const cartItem = cartItems.find(item => item.productId === product.id && item.variantId === selectedVariant.id);
+    if (!selectedOption) return 0;
+    const cartItem = cartItems.find(
+      (item) =>
+        item.productId === selectedOption.productId &&
+        item.variantId === selectedOption.variantId
+    );
     return cartItem ? cartItem.quantity : 0;
   };
 
@@ -403,22 +466,6 @@ export default function ProductDetailClient({
     }
   };
 
-  const formatUnit = (weight: number, type: string) => {
-    if (type === "Ghee") {
-      if (weight >= 1000) {
-        const liters = weight / 1000;
-        return liters % 1 === 0 ? `${liters} L` : `${liters.toFixed(1)} L`;
-      }
-      return `${weight} ml`;
-    } else {
-      if (weight >= 1000) {
-        const kg = weight / 1000;
-        return kg % 1 === 0 ? `${kg} kg` : `${kg.toFixed(1)} kg`;
-      }
-      return `${weight} g`;
-    }
-  };
-
   if (error || !product) {
     return (
       <>
@@ -441,9 +488,11 @@ export default function ProductDetailClient({
     );
   }
 
-  const currentPrice = selectedVariant ? (selectedVariant.Price - (selectedVariant.Discount || 0)) : 0;
-  const originalPrice = selectedVariant ? selectedVariant.Price : 0;
-  const savings = selectedVariant ? (selectedVariant.Discount || 0) : 0;
+  const currentPrice = selectedOption
+    ? selectedOption.price - selectedOption.discount
+    : 0;
+  const originalPrice = selectedOption ? selectedOption.price : 0;
+  const savings = selectedOption ? selectedOption.discount : 0;
   const emoji = getProductEmoji(product.Title, product.Type);
   const itemInCart = isItemInCart();
   const cartQuantity = getCartItemQuantity();
@@ -585,36 +634,50 @@ export default function ProductDetailClient({
                 </div>
 
                 {/* Variant Selection */}
-                {product.Variants && product.Variants.length > 0 && (
+                {familyVariants.length > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[#4b2e19] mb-3">Select size</p>
-                    <div className="flex flex-col gap-3">
-                      {product.Variants.map((variant, index) => {
-                        const variantPrice = variant.Price - (variant.Discount || 0);
-                        const variantSavings = variant.Discount || 0;
-                        const isSelected = selectedVariant?.id === variant.id;
+                    <p className="text-sm font-semibold text-[#4b2e19] mb-3">
+                      {variantSelectLabel(product.Type)}
+                    </p>
+                    <div
+                      className={
+                        familyVariants.length > 1
+                          ? "grid grid-cols-2 gap-3"
+                          : "flex flex-col gap-3"
+                      }
+                    >
+                      {familyVariants.map((row) => {
+                        const variantPrice = row.price - row.discount;
+                        const isSelected =
+                          selectedOption != null &&
+                          familyVariantKey(selectedOption) === familyVariantKey(row);
 
                         return (
                           <button
-                            key={index}
-                            onClick={() => setSelectedVariant(variant)}
-                            className={`overflow-hidden rounded-xl border text-left transition-all shadow-[0_2px_12px_rgba(75,46,25,0.06)] ${isSelected
+                            key={familyVariantKey(row)}
+                            type="button"
+                            onClick={() => handleSelectFamilyVariant(row)}
+                            disabled={row.stock <= 0}
+                            className={`overflow-hidden rounded-xl border text-left transition-all shadow-[0_2px_12px_rgba(75,46,25,0.06)] disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
                               ? "border-[#4b2e19]"
                               : "border-[#e8e4dc] hover:border-[#4b2e19]/40"
                               }`}
                           >
                             <div className={`px-4 py-2 text-sm font-semibold ${isSelected ? "bg-[#4b2e19] text-white" : "bg-[#f5f2ea] text-[#4b2e19]"}`}>
-                              {formatUnit(variant.Weight, product.Type)}
+                              {formatVariantUnit(row.weight, product.Type)}
+                              {row.stock <= 0 ? (
+                                <span className="ml-2 text-[10px] font-medium opacity-80">Out of stock</span>
+                              ) : null}
                             </div>
                             <div className="flex items-center justify-between gap-3 bg-white px-4 py-3">
                               <div>
                                 <span className="text-lg font-bold text-[#2D2D2D]">{formatInr(variantPrice)}</span>
-                                {variantSavings > 0 && (
-                                  <span className="ml-2 text-sm text-[#2D2D2D]/45 line-through">{formatInr(variant.Price)}</span>
+                                {row.discount > 0 && (
+                                  <span className="ml-2 text-sm text-[#2D2D2D]/45 line-through">{formatInr(row.price)}</span>
                                 )}
                               </div>
-                              {variant.Price > 0 && variantSavings > 0 && (
-                                <span className="text-sm font-semibold text-red-600">{Math.round((variantSavings / variant.Price) * 100)}% off</span>
+                              {row.price > 0 && row.discount > 0 && (
+                                <span className="text-sm font-semibold text-red-600">{Math.round((row.discount / row.price) * 100)}% off</span>
                               )}
                             </div>
                           </button>
@@ -646,14 +709,14 @@ export default function ProductDetailClient({
                         <button
                           className={`flex-1 bg-[#4b2e19] text-white py-3.5 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ctaAttentionClass}`}
                           onClick={handleAddToCart}
-                          disabled={cartLoading || !selectedVariant}
+                          disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                         >
                           {cartLoading ? 'Adding...' : 'Add to Cart'}
                         </button>
                         <button
                           className={`flex-1 bg-[#f5d26a] text-[#4b2e19] py-3.5 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ctaAttentionClass}`}
                           onClick={handleBuyNow}
-                          disabled={cartLoading || !selectedVariant}
+                          disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                         >
                           {cartLoading ? 'Processing...' : 'Buy Now'}
                         </button>
@@ -1101,9 +1164,9 @@ export default function ProductDetailClient({
                     <span className="text-lg text-[#2D2D2D]/60 line-through">{formatInr(originalPrice)}</span>
                   )}
                 </div>
-                {selectedVariant && (
+                {selectedOption && (
                   <div className="text-xs text-[#2D2D2D]/70">
-                    {formatUnit(selectedVariant.Weight, product.Type)}
+                    {formatVariantUnit(selectedOption.weight, product.Type)}
                   </div>
                 )}
               </div>
@@ -1135,14 +1198,14 @@ export default function ProductDetailClient({
                   <button
                     className={`flex-1 bg-[#4b2e19] text-white py-3 rounded-full font-semibold hover:bg-[#2f4f2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${ctaAttentionClass}`}
                     onClick={handleAddToCart}
-                    disabled={cartLoading || !selectedVariant}
+                    disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                   >
                     {cartLoading ? 'Adding...' : 'Add to Cart'}
                   </button>
                   <button
                     className={`flex-1 bg-[#f5d26a] text-[#4b2e19] py-3 rounded-full font-semibold hover:bg-[#e6c25a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${ctaAttentionClass}`}
                     onClick={handleBuyNow}
-                    disabled={cartLoading || !selectedVariant}
+                    disabled={cartLoading || !selectedOption || selectedOption.stock <= 0}
                   >
                     {cartLoading ? 'Processing...' : 'Buy Now'}
                   </button>

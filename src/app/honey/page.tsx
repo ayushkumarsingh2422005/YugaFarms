@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import HoneyPageClient from "./HoneyPageClient";
-import { getProductsByType } from "@/lib/strapiPublic";
+import { getAllProductsByType } from "@/lib/strapiPublic";
 
 export const metadata: Metadata = {
   title: "Buy Raw Multifloral Honey Online India",
@@ -15,6 +15,6 @@ export const metadata: Metadata = {
 };
 
 export default async function HoneyPage() {
-  const products = await getProductsByType("Honey");
+  const products = await getAllProductsByType("Honey");
   return <HoneyPageClient products={products} />;
 }

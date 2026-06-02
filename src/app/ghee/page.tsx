@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import GheePageClient from "./GheePageClient";
-import { getProductsByType } from "@/lib/strapiPublic";
+import { getAllProductsByType } from "@/lib/strapiPublic";
 
 export const metadata: Metadata = {
   title: "A2 Sahiwal Cow Ghee – Bilona Method",
@@ -15,6 +15,6 @@ export const metadata: Metadata = {
 };
 
 export default async function GheePage() {
-  const products = await getProductsByType("Ghee");
+  const products = await getAllProductsByType("Ghee");
   return <GheePageClient products={products} />;
 }
