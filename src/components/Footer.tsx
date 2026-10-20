@@ -63,7 +63,7 @@ export default function Footer() {
                         <h4 className="font-semibold text-[#4b2e19] mb-3">Get in touch</h4>
                         <ul className="space-y-2 text-sm text-[#2D2D2D]/80">
                             <li>Email: support@yugafarms.com</li>
-                            <li>Phone: +91 96710 12177</li>
+                            <li>Phone: +91 96713 24344</li>
                             <li>Address: Janouli, Palwal, Haryana, 121102</li>
                         </ul>
                     </div>

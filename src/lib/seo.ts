@@ -117,7 +117,7 @@ export function buildOrganizationJsonLd() {
     },
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+91-96710-12177",
+      telephone: "+91-96713-24344",
       contactType: "customer service",
       email: "support@yugafarms.com",
       areaServed: "IN",
