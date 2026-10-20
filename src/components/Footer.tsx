@@ -70,9 +70,11 @@ export default function Footer() {
                 </div>
                 <div className="mt-8 pt-6 border-t border-[#4b2e19]/10 text-xs text-[#2D2D2D]/60 flex flex-col md:flex-row items-center justify-between">
                     <span>© {new Date().getFullYear()} YugaFarms. All rights reserved.</span>
+                    {/* DigiCraft branding — restore later
                     <div className="mt-2 md:mt-0 space-x-4">
                         Designed and Developed by <Link href="https://www.digicraft.one" className="text-[#2f4f2f] font-medium underline underline-offset-4 hover:text-[#4b2e19]">DigiCraft</Link>
                     </div>
+                    */}
                 </div>
             </div>
         </footer>
